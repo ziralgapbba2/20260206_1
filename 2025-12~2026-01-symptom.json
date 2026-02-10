@@ -1,0 +1,1571 @@
+{
+  "meta": {
+    "period": "2025-12~2026-01",
+    "totalRecords": 193937,
+    "generated": "2026-02-10T01:55:17.810Z"
+  },
+  "products": [
+    "밥솥",
+    "정수기",
+    "비데",
+    "음식물처리기",
+    "인덕션레인지",
+    "식기세척기",
+    "가습기",
+    "무선청소기",
+    "공기청정기",
+    "로봇청소기"
+  ],
+  "data": {
+    "밥솥": {
+      "total_count": 101513,
+      "symptoms": [
+        {
+          "symptom": "증기누설",
+          "count": 14460,
+          "percentage": 14.24
+        },
+        {
+          "symptom": "증기샘",
+          "count": 3503,
+          "percentage": 3.45
+        },
+        {
+          "symptom": "E01",
+          "count": 2266,
+          "percentage": 2.23
+        },
+        {
+          "symptom": "김샘",
+          "count": 2080,
+          "percentage": 2.05
+        },
+        {
+          "symptom": "e01",
+          "count": 1856,
+          "percentage": 1.83
+        },
+        {
+          "symptom": "조기배출",
+          "count": 1798,
+          "percentage": 1.77
+        },
+        {
+          "symptom": "설익음",
+          "count": 1543,
+          "percentage": 1.52
+        },
+        {
+          "symptom": "전원무",
+          "count": 1511,
+          "percentage": 1.49
+        },
+        {
+          "symptom": "냄새",
+          "count": 1288,
+          "percentage": 1.27
+        },
+        {
+          "symptom": "증누",
+          "count": 1219,
+          "percentage": 1.2
+        },
+        {
+          "symptom": "밥마름",
+          "count": 942,
+          "percentage": 0.93
+        },
+        {
+          "symptom": "에러",
+          "count": 908,
+          "percentage": 0.89
+        },
+        {
+          "symptom": "ECO",
+          "count": 769,
+          "percentage": 0.76
+        },
+        {
+          "symptom": "eco",
+          "count": 767,
+          "percentage": 0.76
+        },
+        {
+          "symptom": "찰기무",
+          "count": 585,
+          "percentage": 0.58
+        },
+        {
+          "symptom": "증기누설-내방",
+          "count": 495,
+          "percentage": 0.49
+        },
+        {
+          "symptom": "증기배출무",
+          "count": 462,
+          "percentage": 0.46
+        },
+        {
+          "symptom": "놉파손",
+          "count": 453,
+          "percentage": 0.45
+        },
+        {
+          "symptom": "e01에러",
+          "count": 441,
+          "percentage": 0.43
+        },
+        {
+          "symptom": "놉 파손",
+          "count": 427,
+          "percentage": 0.42
+        },
+        {
+          "symptom": "E01에러",
+          "count": 384,
+          "percentage": 0.38
+        },
+        {
+          "symptom": "에러코드",
+          "count": 375,
+          "percentage": 0.37
+        },
+        {
+          "symptom": "오작동",
+          "count": 368,
+          "percentage": 0.36
+        },
+        {
+          "symptom": "증기",
+          "count": 363,
+          "percentage": 0.36
+        },
+        {
+          "symptom": "eo1",
+          "count": 350,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "점검",
+          "count": 338,
+          "percentage": 0.33
+        },
+        {
+          "symptom": "보온안됨",
+          "count": 328,
+          "percentage": 0.32
+        },
+        {
+          "symptom": "오동작",
+          "count": 313,
+          "percentage": 0.31
+        },
+        {
+          "symptom": "작동불",
+          "count": 299,
+          "percentage": 0.29
+        },
+        {
+          "symptom": "화면깜빡임",
+          "count": 297,
+          "percentage": 0.29
+        }
+      ]
+    },
+    "정수기": {
+      "total_count": 53534,
+      "symptoms": [
+        {
+          "symptom": "냉수미지근",
+          "count": 235,
+          "percentage": 0.44
+        },
+        {
+          "symptom": "온수안나옴",
+          "count": 181,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "온수안됨",
+          "count": 158,
+          "percentage": 0.3
+        },
+        {
+          "symptom": "온수미지근",
+          "count": 134,
+          "percentage": 0.25
+        },
+        {
+          "symptom": "얼음안나옴",
+          "count": 104,
+          "percentage": 0.19
+        },
+        {
+          "symptom": "물안나옴",
+          "count": 104,
+          "percentage": 0.19
+        },
+        {
+          "symptom": "온수 안나옴",
+          "count": 101,
+          "percentage": 0.19
+        },
+        {
+          "symptom": "냉수 미지근",
+          "count": 95,
+          "percentage": 0.18
+        },
+        {
+          "symptom": "물맛이상",
+          "count": 86,
+          "percentage": 0.16
+        },
+        {
+          "symptom": "얼음안나옵니다",
+          "count": 85,
+          "percentage": 0.16
+        },
+        {
+          "symptom": "소음심합니다",
+          "count": 81,
+          "percentage": 0.15
+        },
+        {
+          "symptom": "온수안나옵니다",
+          "count": 72,
+          "percentage": 0.13
+        },
+        {
+          "symptom": "얼음 안나옴",
+          "count": 66,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "온수출수안됨",
+          "count": 63,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "소음",
+          "count": 63,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "물안나옵니다",
+          "count": 62,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "온수 미지근",
+          "count": 61,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "물 안나옴",
+          "count": 59,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "소음심함",
+          "count": 58,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "냉수안됨",
+          "count": 52,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "누수",
+          "count": 44,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "온수안됩니다",
+          "count": 39,
+          "percentage": 0.07
+        },
+        {
+          "symptom": "온수가 안나옵니다",
+          "count": 35,
+          "percentage": 0.07
+        },
+        {
+          "symptom": "냉수안나옴",
+          "count": 34,
+          "percentage": 0.06
+        },
+        {
+          "symptom": "37대 냉수안됌 건택시 010-7997-2756",
+          "count": 33,
+          "percentage": 0.06
+        },
+        {
+          "symptom": "온수가 안나옴",
+          "count": 30,
+          "percentage": 0.06
+        },
+        {
+          "symptom": "설치품쿠폰 접수 요청",
+          "count": 30,
+          "percentage": 0.06
+        },
+        {
+          "symptom": "온수 안됨",
+          "count": 29,
+          "percentage": 0.05
+        },
+        {
+          "symptom": "냉수안시원함",
+          "count": 28,
+          "percentage": 0.05
+        },
+        {
+          "symptom": "얼음안됨",
+          "count": 25,
+          "percentage": 0.05
+        }
+      ]
+    },
+    "비데": {
+      "total_count": 15449,
+      "symptoms": [
+        {
+          "symptom": "변좌흔들림",
+          "count": 73,
+          "percentage": 0.47
+        },
+        {
+          "symptom": "전원무/누수/변좌시트 조절안됨/버튼안눌림 담당자 010-4854-2984",
+          "count": 69,
+          "percentage": 0.45
+        },
+        {
+          "symptom": "노즐안나옴",
+          "count": 64,
+          "percentage": 0.41
+        },
+        {
+          "symptom": "연결선 물샘, 전원 안들어옴, 변좌안따뜻함, 노즐 안나옴 필터쪽에서 물떨어짐, 담당자 : 010 6263 5059",
+          "count": 62,
+          "percentage": 0.4
+        },
+        {
+          "symptom": "노즐 안나옴",
+          "count": 44,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "누수및점검요청",
+          "count": 30,
+          "percentage": 0.19
+        },
+        {
+          "symptom": "노즐안나옵니다",
+          "count": 27,
+          "percentage": 0.17
+        },
+        {
+          "symptom": "변좌 흔들림",
+          "count": 27,
+          "percentage": 0.17
+        },
+        {
+          "symptom": "리모컨 작동안됨",
+          "count": 23,
+          "percentage": 0.15
+        },
+        {
+          "symptom": "비데 오링 불량",
+          "count": 22,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "변좌온열안됩니다",
+          "count": 20,
+          "percentage": 0.13
+        },
+        {
+          "symptom": "12월 설치된 CBT-G1031W 총 31기중 담당 메니저 방문 확인시 21기 설치불량으로 문이 닫히지 않습니다 빠른 방문으로 21기 전체 설치사항 확인요청드립니다",
+          "count": 20,
+          "percentage": 0.13
+        },
+        {
+          "symptom": "작동여부 점검요청",
+          "count": 20,
+          "percentage": 0.13
+        },
+        {
+          "symptom": "비데필터부분에서 물샘/빠른방문요청",
+          "count": 20,
+          "percentage": 0.13
+        },
+        {
+          "symptom": "변좌차가움",
+          "count": 18,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "비데 연결부위에서 물떨어짐",
+          "count": 18,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "노즐안됨",
+          "count": 17,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "후레쉬 밸브 누수 점검 건 AS 접수부탁드립니다.",
+          "count": 17,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "필터누수",
+          "count": 17,
+          "percentage": 0.11
+        },
+        {
+          "symptom": "노즐작동안됩니다",
+          "count": 16,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "전원무",
+          "count": 16,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "연결부 물떨어짐",
+          "count": 16,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "물안나옴",
+          "count": 16,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "누수 및 점검",
+          "count": 16,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "필터부분에서 누수",
+          "count": 15,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "노즐작동안됨",
+          "count": 15,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "변좌 차가움",
+          "count": 15,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "비데가 전체적으로 누수가 돌아가면서 발생하여 직수밸브 누수 확인및 부품 교체 요청함",
+          "count": 15,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "전체 점검 직원:주복녀 동반",
+          "count": 15,
+          "percentage": 0.1
+        },
+        {
+          "symptom": "비데 작동안됩니다",
+          "count": 14,
+          "percentage": 0.09
+        }
+      ]
+    },
+    "음식물처리기": {
+      "total_count": 5340,
+      "symptoms": [
+        {
+          "symptom": "전원무",
+          "count": 219,
+          "percentage": 4.1
+        },
+        {
+          "symptom": "누수",
+          "count": 103,
+          "percentage": 1.93
+        },
+        {
+          "symptom": "건조통 에러",
+          "count": 93,
+          "percentage": 1.74
+        },
+        {
+          "symptom": "건조통에러",
+          "count": 88,
+          "percentage": 1.65
+        },
+        {
+          "symptom": "에러",
+          "count": 56,
+          "percentage": 1.05
+        },
+        {
+          "symptom": "건조통 누수",
+          "count": 52,
+          "percentage": 0.97
+        },
+        {
+          "symptom": "건조통이상",
+          "count": 33,
+          "percentage": 0.62
+        },
+        {
+          "symptom": "전원 무",
+          "count": 33,
+          "percentage": 0.62
+        },
+        {
+          "symptom": "건조통누수",
+          "count": 30,
+          "percentage": 0.56
+        },
+        {
+          "symptom": "작동불",
+          "count": 27,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "소음",
+          "count": 26,
+          "percentage": 0.49
+        },
+        {
+          "symptom": "동작불",
+          "count": 23,
+          "percentage": 0.43
+        },
+        {
+          "symptom": "건조통 이상 에러",
+          "count": 20,
+          "percentage": 0.37
+        },
+        {
+          "symptom": "건조통 이상",
+          "count": 18,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "작동안됨",
+          "count": 18,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "버킷누수",
+          "count": 14,
+          "percentage": 0.26
+        },
+        {
+          "symptom": "건조통 이상에러",
+          "count": 14,
+          "percentage": 0.26
+        },
+        {
+          "symptom": "내솥 누수",
+          "count": 14,
+          "percentage": 0.26
+        },
+        {
+          "symptom": "점검",
+          "count": 12,
+          "percentage": 0.22
+        },
+        {
+          "symptom": "전원불",
+          "count": 12,
+          "percentage": 0.22
+        },
+        {
+          "symptom": "버킷 누수",
+          "count": 11,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "분쇄안됨",
+          "count": 11,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "작동무",
+          "count": 11,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "물샘",
+          "count": 11,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "건조통이상에러",
+          "count": 9,
+          "percentage": 0.17
+        },
+        {
+          "symptom": "건조통에러음성",
+          "count": 9,
+          "percentage": 0.17
+        },
+        {
+          "symptom": "팬모터에러",
+          "count": 9,
+          "percentage": 0.17
+        },
+        {
+          "symptom": "내솥누수",
+          "count": 8,
+          "percentage": 0.15
+        },
+        {
+          "symptom": "전원 안들어옴",
+          "count": 8,
+          "percentage": 0.15
+        },
+        {
+          "symptom": "건조안됨",
+          "count": 8,
+          "percentage": 0.15
+        }
+      ]
+    },
+    "인덕션레인지": {
+      "total_count": 3721,
+      "symptoms": [
+        {
+          "symptom": "전원무",
+          "count": 148,
+          "percentage": 3.98
+        },
+        {
+          "symptom": "용기인식불",
+          "count": 91,
+          "percentage": 2.45
+        },
+        {
+          "symptom": "용기인식 안됨",
+          "count": 49,
+          "percentage": 1.32
+        },
+        {
+          "symptom": "용기인식안됨",
+          "count": 40,
+          "percentage": 1.07
+        },
+        {
+          "symptom": "작동불",
+          "count": 26,
+          "percentage": 0.7
+        },
+        {
+          "symptom": "전원 무",
+          "count": 26,
+          "percentage": 0.7
+        },
+        {
+          "symptom": "전원불",
+          "count": 21,
+          "percentage": 0.56
+        },
+        {
+          "symptom": "내솥에러",
+          "count": 20,
+          "percentage": 0.54
+        },
+        {
+          "symptom": "냄비없음표시",
+          "count": 20,
+          "percentage": 0.54
+        },
+        {
+          "symptom": "가열안됨",
+          "count": 20,
+          "percentage": 0.54
+        },
+        {
+          "symptom": "용기인식x",
+          "count": 19,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "냄비인식안됨",
+          "count": 19,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "오븐없음표시",
+          "count": 18,
+          "percentage": 0.48
+        },
+        {
+          "symptom": "용기인식무",
+          "count": 18,
+          "percentage": 0.48
+        },
+        {
+          "symptom": "냄비인식불",
+          "count": 17,
+          "percentage": 0.46
+        },
+        {
+          "symptom": "용기인식X",
+          "count": 17,
+          "percentage": 0.46
+        },
+        {
+          "symptom": "용기인식 불",
+          "count": 17,
+          "percentage": 0.46
+        },
+        {
+          "symptom": "소음",
+          "count": 15,
+          "percentage": 0.4
+        },
+        {
+          "symptom": "상판파손",
+          "count": 15,
+          "percentage": 0.4
+        },
+        {
+          "symptom": "상판깨짐",
+          "count": 14,
+          "percentage": 0.38
+        },
+        {
+          "symptom": "가열불",
+          "count": 12,
+          "percentage": 0.32
+        },
+        {
+          "symptom": "인식x",
+          "count": 11,
+          "percentage": 0.3
+        },
+        {
+          "symptom": "오븐없음표시/",
+          "count": 10,
+          "percentage": 0.27
+        },
+        {
+          "symptom": "에러",
+          "count": 10,
+          "percentage": 0.27
+        },
+        {
+          "symptom": "오븐없음에러",
+          "count": 10,
+          "percentage": 0.27
+        },
+        {
+          "symptom": "용기인식불량",
+          "count": 9,
+          "percentage": 0.24
+        },
+        {
+          "symptom": "용기인식불가",
+          "count": 9,
+          "percentage": 0.24
+        },
+        {
+          "symptom": "상판 파손",
+          "count": 9,
+          "percentage": 0.24
+        },
+        {
+          "symptom": "빈오븐",
+          "count": 9,
+          "percentage": 0.24
+        },
+        {
+          "symptom": "작동무",
+          "count": 8,
+          "percentage": 0.21
+        }
+      ]
+    },
+    "식기세척기": {
+      "total_count": 2543,
+      "symptoms": [
+        {
+          "symptom": "E3에러",
+          "count": 4,
+          "percentage": 0.16
+        },
+        {
+          "symptom": "1.13화/설치요청/쿠팡로켓배송.일시불",
+          "count": 3,
+          "percentage": 0.12
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기세척기||CDWCS0620TGPE||동작 관련||작동 중에 전윈이 꺼진다||1년 미만||",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "설치/12월4일",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기건조기||CDWCS0610TGW||구조/외관||전면부패널양쪽모서리 유리뒤쪽 금가있음||1년 미만||kyees0124@gmail.com",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기세척기||CDWBS0310TWE||동작 관련||작동시키면 3분뒤에 e14  뜸 여러||1년 미만||fndkdmldutls@daum.net",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "설치/1월6일",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "전면부유리깨짐",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기세척기||CDWA0611TS||동작 관련||E4 에러(콘센트 뽑았다껴도 동일)||1년 이상||armimoon@naver.com",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "AS이후 E14에러 재발생",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||생활가전||기타||CDWBS0310TWE||직접입력(10자이내)||e14||1년 미만||chounghm@gmail.com",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "1.6.화/쿠팡로켓배송무상설치대상/오후1시이후방문희망",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "설치/1월7일",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "식기세척기 누수",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "E4에러뜸.누수.작동안됨.지속동일증상.AS이력확인시안되면입고수리진행내용확인됨/원수밸브잠금불가/1년미만/무상",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "1.8/쿠팡로켓배송무상설치요청/제품1월6일/01042881908",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "E-4에러/문하부쪽누수/한달이내",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "본사교환요청건",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "제품 누수/유상안내",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기세척기||CDWBS1410BW||동작 관련||물이 새요||1년 미만||",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "1212/에러후지지직소음심함/만수표시안됨.작동불/어제E10에러.재인가후없음/유무상/구매1년미만/수동급수",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "이전설치/유상",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "E14DPFJ",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "동작 관련 급수 문제가 있는것 같습니다 1년 미만",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "13화/쿠팡로켓배송건설치/1월12일수령/상수도",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "화(1.13)/쿠팡 로켓배송_무상설치요청/제품수령 2026.1.10",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "1.15목/설치요청/쿠팡로켓배송.일시불",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "(온라인)||주방가전||식기세척기||CDWBD0620TB||전원부 관련||어느정도 돌다가 누전차단기가 내려가요||1년 미만||kisine@daum.net",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "12.26(금)/마지막타임요청/전원무/벽면콘센트인가/구매1년미만/유무상",
+          "count": 2,
+          "percentage": 0.08
+        },
+        {
+          "symptom": "01.14.수.식기세척기설치.쿠팡설치품쿠폰.수령2일.현장환경에따른추가비용안내",
+          "count": 2,
+          "percentage": 0.08
+        }
+      ]
+    },
+    "가습기": {
+      "total_count": 2333,
+      "symptoms": [
+        {
+          "symptom": "전원무",
+          "count": 132,
+          "percentage": 5.66
+        },
+        {
+          "symptom": "분무안됨",
+          "count": 115,
+          "percentage": 4.93
+        },
+        {
+          "symptom": "분무불",
+          "count": 107,
+          "percentage": 4.59
+        },
+        {
+          "symptom": "가습안됨",
+          "count": 85,
+          "percentage": 3.64
+        },
+        {
+          "symptom": "가습불",
+          "count": 74,
+          "percentage": 3.17
+        },
+        {
+          "symptom": "분무x",
+          "count": 47,
+          "percentage": 2.01
+        },
+        {
+          "symptom": "분무 불",
+          "count": 41,
+          "percentage": 1.76
+        },
+        {
+          "symptom": "에러",
+          "count": 35,
+          "percentage": 1.5
+        },
+        {
+          "symptom": "분무 안됨",
+          "count": 34,
+          "percentage": 1.46
+        },
+        {
+          "symptom": "작동불",
+          "count": 33,
+          "percentage": 1.41
+        },
+        {
+          "symptom": "작동무",
+          "count": 22,
+          "percentage": 0.94
+        },
+        {
+          "symptom": "분무X",
+          "count": 19,
+          "percentage": 0.81
+        },
+        {
+          "symptom": "에러코드",
+          "count": 19,
+          "percentage": 0.81
+        },
+        {
+          "symptom": "가습무",
+          "count": 18,
+          "percentage": 0.77
+        },
+        {
+          "symptom": "가습 안됨",
+          "count": 17,
+          "percentage": 0.73
+        },
+        {
+          "symptom": "작동안됨",
+          "count": 15,
+          "percentage": 0.64
+        },
+        {
+          "symptom": "전원 무",
+          "count": 15,
+          "percentage": 0.64
+        },
+        {
+          "symptom": "가습x",
+          "count": 15,
+          "percentage": 0.64
+        },
+        {
+          "symptom": "물없음표시",
+          "count": 13,
+          "percentage": 0.56
+        },
+        {
+          "symptom": "전원x",
+          "count": 13,
+          "percentage": 0.56
+        },
+        {
+          "symptom": "e3에러",
+          "count": 11,
+          "percentage": 0.47
+        },
+        {
+          "symptom": "가습 불",
+          "count": 10,
+          "percentage": 0.43
+        },
+        {
+          "symptom": "가습이안됨",
+          "count": 9,
+          "percentage": 0.39
+        },
+        {
+          "symptom": "물없음 에러",
+          "count": 9,
+          "percentage": 0.39
+        },
+        {
+          "symptom": "물없음 표시",
+          "count": 8,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "전원불",
+          "count": 8,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "E3",
+          "count": 8,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "E2에러",
+          "count": 8,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "E4 에러",
+          "count": 8,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "물부족 에러",
+          "count": 7,
+          "percentage": 0.3
+        }
+      ]
+    },
+    "무선청소기": {
+      "total_count": 2139,
+      "symptoms": [
+        {
+          "symptom": "충전안됨",
+          "count": 132,
+          "percentage": 6.17
+        },
+        {
+          "symptom": "충전불",
+          "count": 48,
+          "percentage": 2.24
+        },
+        {
+          "symptom": "흡입안됨",
+          "count": 45,
+          "percentage": 2.1
+        },
+        {
+          "symptom": "먼지통 파손",
+          "count": 29,
+          "percentage": 1.36
+        },
+        {
+          "symptom": "흡입불",
+          "count": 21,
+          "percentage": 0.98
+        },
+        {
+          "symptom": "충전x",
+          "count": 21,
+          "percentage": 0.98
+        },
+        {
+          "symptom": "충전 안됨",
+          "count": 20,
+          "percentage": 0.94
+        },
+        {
+          "symptom": "작동불",
+          "count": 17,
+          "percentage": 0.79
+        },
+        {
+          "symptom": "작동중꺼짐",
+          "count": 15,
+          "percentage": 0.7
+        },
+        {
+          "symptom": "충전불량",
+          "count": 13,
+          "percentage": 0.61
+        },
+        {
+          "symptom": "작동무",
+          "count": 12,
+          "percentage": 0.56
+        },
+        {
+          "symptom": "흡입약함",
+          "count": 11,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "소음",
+          "count": 11,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "충전X",
+          "count": 11,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "전원무",
+          "count": 11,
+          "percentage": 0.51
+        },
+        {
+          "symptom": "작동중 꺼짐",
+          "count": 10,
+          "percentage": 0.47
+        },
+        {
+          "symptom": "작동안됨",
+          "count": 9,
+          "percentage": 0.42
+        },
+        {
+          "symptom": "먼지통 안닫힘",
+          "count": 8,
+          "percentage": 0.37
+        },
+        {
+          "symptom": "사용중 꺼짐",
+          "count": 7,
+          "percentage": 0.33
+        },
+        {
+          "symptom": "먼지통파손",
+          "count": 7,
+          "percentage": 0.33
+        },
+        {
+          "symptom": "충전 불",
+          "count": 7,
+          "percentage": 0.33
+        },
+        {
+          "symptom": "점검요청",
+          "count": 6,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "충전안됨,내부",
+          "count": 6,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "배터리 방전",
+          "count": 6,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "오작동",
+          "count": 5,
+          "percentage": 0.23
+        },
+        {
+          "symptom": "오동작",
+          "count": 5,
+          "percentage": 0.23
+        },
+        {
+          "symptom": "충전무",
+          "count": 5,
+          "percentage": 0.23
+        },
+        {
+          "symptom": "흡입x",
+          "count": 5,
+          "percentage": 0.23
+        },
+        {
+          "symptom": "충전 x",
+          "count": 4,
+          "percentage": 0.19
+        },
+        {
+          "symptom": "브러쉬파손",
+          "count": 4,
+          "percentage": 0.19
+        }
+      ]
+    },
+    "공기청정기": {
+      "total_count": 1454,
+      "symptoms": [
+        {
+          "symptom": "소음",
+          "count": 37,
+          "percentage": 2.54
+        },
+        {
+          "symptom": "전원무",
+          "count": 30,
+          "percentage": 2.06
+        },
+        {
+          "symptom": "소음심함",
+          "count": 15,
+          "percentage": 1.03
+        },
+        {
+          "symptom": "작동안됨",
+          "count": 9,
+          "percentage": 0.62
+        },
+        {
+          "symptom": "소음발생",
+          "count": 8,
+          "percentage": 0.55
+        },
+        {
+          "symptom": "작동무",
+          "count": 8,
+          "percentage": 0.55
+        },
+        {
+          "symptom": "모터소음",
+          "count": 6,
+          "percentage": 0.41
+        },
+        {
+          "symptom": "작동시 소음",
+          "count": 6,
+          "percentage": 0.41
+        },
+        {
+          "symptom": "필터6개교환",
+          "count": 6,
+          "percentage": 0.41
+        },
+        {
+          "symptom": "작동불",
+          "count": 6,
+          "percentage": 0.41
+        },
+        {
+          "symptom": "알레르겐 필터 불량으로 A/S 접수 요청입니다  필터가 너덜거린다고합니다",
+          "count": 5,
+          "percentage": 0.34
+        },
+        {
+          "symptom": "점검요청",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "에러",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "점검",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "전원불",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "공기청정기에 이물질 들어가서 소리가 남. 고객컨택  010-9005-2842",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "필터 교체 요청",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "벽걸이 청정기 냄새난다고합니다 빠른 AS부탁드립니다 AC-09AA10FWH",
+          "count": 4,
+          "percentage": 0.28
+        },
+        {
+          "symptom": "청정기가 전원이 안들어 옵니다as요청합니다",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "청정기에서 삐 소리후 전원 나간다함 3대가 현제 안되니 방문부탁드립ㄴㄱ다",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "필터 에러",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "소음심합니다",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "공청기 전원을 키면 이상한 냄새가 난다고 합니다. 빠른 수리 요청드립니다",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "ㅇ증상:공기청정기 떨리는 소음이 있음 ㅇ전화번호: 010-8746-3410 ㅇ빠른방문요청드립니다.",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "팬소음",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "소음 심함",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "청정기 냄새로 AS요청합니다 어린이집이라 빠른요청부탁드립니다 AC-09AA10FWH",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "사용중 꺼짐",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "파워코드소손",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "소음큽니다",
+          "count": 2,
+          "percentage": 0.14
+        }
+      ]
+    },
+    "로봇청소기": {
+      "total_count": 1397,
+      "symptoms": [
+        {
+          "symptom": "흡입안됨",
+          "count": 17,
+          "percentage": 1.22
+        },
+        {
+          "symptom": "충전안됨",
+          "count": 15,
+          "percentage": 1.07
+        },
+        {
+          "symptom": "작동안됨",
+          "count": 15,
+          "percentage": 1.07
+        },
+        {
+          "symptom": "작동불",
+          "count": 13,
+          "percentage": 0.93
+        },
+        {
+          "symptom": "전원무",
+          "count": 9,
+          "percentage": 0.64
+        },
+        {
+          "symptom": "물넘침",
+          "count": 8,
+          "percentage": 0.57
+        },
+        {
+          "symptom": "점검요청",
+          "count": 7,
+          "percentage": 0.5
+        },
+        {
+          "symptom": "오동작",
+          "count": 6,
+          "percentage": 0.43
+        },
+        {
+          "symptom": "누수",
+          "count": 5,
+          "percentage": 0.36
+        },
+        {
+          "symptom": "소음",
+          "count": 5,
+          "percentage": 0.36
+        },
+        {
+          "symptom": "흡입약함",
+          "count": 4,
+          "percentage": 0.29
+        },
+        {
+          "symptom": "흡입불",
+          "count": 4,
+          "percentage": 0.29
+        },
+        {
+          "symptom": "물샘",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "물흐름",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "작동이상",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "스테이션 전원무",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "사용설명 원하심",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "충전불",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "흡입 안됨",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "작동무",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "동작안됨",
+          "count": 3,
+          "percentage": 0.21
+        },
+        {
+          "symptom": "12.02.화/로봇청소기먼지통,오물통인식오류/청소작동시물분사안됨/구매3개월이상/모델명확인불/오후2시이후방문요청/유무상",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "점검",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "맵핑안됨",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "스테이션 못들어감",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "스테이션 복귀안됨",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "작동불/출",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "동작중 멈춤",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "작동불량",
+          "count": 2,
+          "percentage": 0.14
+        },
+        {
+          "symptom": "흡입력 약함",
+          "count": 2,
+          "percentage": 0.14
+        }
+      ]
+    }
+  }
+}

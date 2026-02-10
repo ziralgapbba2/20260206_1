@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>제품별 문의내용 증상 분석</title>
+    
+    <!-- 
+    ====================================================================
+    리팩토링 버전 - 외부 JSON 데이터 로딩
+    ====================================================================
+    파일 구조:
+    📁 dashboard/
+      ├── symptom_analysis.html  (이 파일)
+      ├── chart.umd.js
+      ├── manifest.json
+      └── 📁 data/
+          ├── 2026-01-symptom.json
+          └── ...
+    ====================================================================
+    -->
+    
+    <script src="chart.umd.js"></script>
+    <script>if(typeof Chart==='undefined')document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>');</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .main-nav {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #F1F5F9;
+            flex-wrap: wrap;
+        }
+        .nav-button {
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid #667EEA;
+            background: white;
+            color: #667EEA;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .nav-button:hover {
+            background: #667EEA;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        .nav-button.active {
+            background: #667EEA;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: #667EEA;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #64748B;
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== 기간 선택 ===== */
+        .period-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+            border-radius: 12px;
+            border: 2px solid #C7D2FE;
+        }
+        .period-selector-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #4338CA;
+        }
+        .period-selector {
+            padding: 10px 36px 10px 16px;
+            border-radius: 8px;
+            border: 2px solid #A5B4FC;
+            background: white;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1E293B;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234338CA' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            transition: all 0.2s;
+        }
+        .period-selector:hover { border-color: #667EEA; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2); }
+        .period-selector:focus { outline: none; border-color: #667EEA; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15); }
+        .period-info { font-size: 13px; color: #6366F1; font-weight: 500; }
+
+        /* ===== 로딩/에러 ===== */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .loading-overlay.show { display: flex; }
+        .loading-spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #E2E8F0;
+            border-top-color: #667EEA;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 16px; font-weight: 600; color: #667EEA; }
+        .error-banner {
+            display: none;
+            padding: 16px 24px;
+            background: #FEF2F2;
+            border: 2px solid #FCA5A5;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            color: #991B1B;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .error-banner.show { display: block; }
+
+        /* 로컬 파일 직접 로딩 패널 */
+        .file-fallback {
+            display: none;
+            padding: 24px;
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            border: 2px solid #F59E0B;
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .file-fallback.show { display: block; }
+        .file-fallback h3 { font-size: 16px; font-weight: 700; color: #92400E; margin-bottom: 8px; }
+        .file-fallback p { font-size: 13px; color: #78350F; margin-bottom: 16px; line-height: 1.6; }
+        .file-fallback .fb-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+        .file-fallback .fb-label { font-size: 13px; font-weight: 700; color: #92400E; min-width: 120px; }
+        .file-fallback .fb-btn {
+            padding: 8px 20px; border-radius: 8px; border: 2px solid #D97706;
+            background: white; color: #92400E; font-weight: 600; font-size: 13px;
+            cursor: pointer; font-family: inherit; transition: all 0.2s;
+        }
+        .file-fallback .fb-btn:hover { background: #FEF3C7; }
+        .file-fallback .fb-btn.loaded { background: #D1FAE5; border-color: #059669; color: #065F46; }
+        .file-fallback .fb-status { font-size: 12px; color: #059669; font-weight: 600; }
+        .file-fallback input[type="file"] { display: none; }
+
+        .data-source {
+            color: #10B981;
+            background: #D1FAE5;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 24px;
+        }
+        .badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 32px;
+        }
+        .badge {
+            font-size: 13px;
+            color: #059669;
+            background: #D1FAE5;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .product-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .product-tab {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid;
+            transition: all 0.3s;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .stat-card {
+            padding: 20px;
+            border-radius: 12px;
+        }
+        .stat-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .stat-sub {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .selected-symptom {
+            padding: 24px;
+            border-radius: 12px;
+            border: 2px solid;
+            margin-bottom: 32px;
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+        .chart-section {
+            margin-bottom: 32px;
+        }
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .chart-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        .chart-header p {
+            font-size: 13px;
+            color: #6B7280;
+            margin-top: 4px;
+        }
+        .top-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .top-button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+        }
+        .top-button.active {
+            background: #667EEA;
+            color: white;
+        }
+        .top-button:not(.active) {
+            background: #E5E7EB;
+            color: #374151;
+        }
+        .top-button:hover:not(.active) {
+            background: #D1D5DB;
+        }
+        .chart-container {
+            background: #F9FAFB;
+            border-radius: 12px;
+            padding: 24px;
+            height: 600px;
+        }
+        .symptoms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .symptom-card {
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .symptom-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        .symptom-card.selected {
+            background: #E0E7FF !important;
+        }
+        .symptom-rank {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .symptom-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-left: 8px;
+        }
+        .symptom-count {
+            font-size: 24px;
+            font-weight: 800;
+            margin-top: 12px;
+        }
+        .symptom-percent {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: white;
+            display: inline-block;
+            margin-top: 12px;
+        }
+        .close-button {
+            padding: 10px 20px;
+            background: #E5E7EB;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .close-button:hover {
+            background: #D1D5DB;
+        }
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            h1 { font-size: 28px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .nav-button { padding: 12px 20px; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">데이터를 불러오는 중...</div>
+    </div>
+
+    <div class="container">
+        <div class="main-nav">
+            <a href="index.html" class="nav-button">📊 서비스 접수 비교 분석</a>
+            <a href="symptom_analysis.html" class="nav-button active">🔍 문의내용 증상 분석</a>
+            <a href="processing_dashboard.html" class="nav-button">📋 처리건 분석</a>
+        </div>
+        
+        <h1>제품별 문의내용 증상 분석</h1>
+        <p class="subtitle">상위 10개 제품의 고객 문의에서 추출한 구체적인 문제 증상입니다</p>
+
+        <!-- 🆕 기간 선택 드롭다운 -->
+        <div class="period-selector-container">
+            <span class="period-selector-label">📅 분석 기간:</span>
+            <select class="period-selector" id="periodSelector">
+                <option value="">로딩 중...</option>
+            </select>
+            <span class="period-info" id="periodInfo"></span>
+        </div>
+
+        <!-- 에러 배너 -->
+        <div class="error-banner" id="errorBanner"></div>
+
+        <!-- 🆕 로컬 파일 직접 로딩 패널 -->
+        <div class="file-fallback" id="fileFallback">
+            <h3>📁 로컬 파일 모드</h3>
+            <p>로컬(file://)에서는 자동 로딩이 불가합니다. 아래 버튼으로 JSON 파일을 직접 선택하세요.<br>
+            또는 로컬 서버: <code style="background:#FEF3C7;padding:2px 6px;border-radius:4px;font-size:12px;">python -m http.server 8000</code> → <code style="background:#FEF3C7;padding:2px 6px;border-radius:4px;font-size:12px;">http://localhost:8000</code></p>
+            <div class="fb-row">
+                <span class="fb-label">① manifest.json</span>
+                <button class="fb-btn" id="fbManifestBtn" onclick="document.getElementById('fbManifestInput').click()">파일 선택</button>
+                <span class="fb-status" id="fbManifestStatus"></span>
+                <input type="file" id="fbManifestInput" accept=".json" onchange="handleLocalManifest(this)">
+            </div>
+            <div class="fb-row" id="fbDataRow" style="display:none;">
+                <span class="fb-label">② 데이터 JSON</span>
+                <button class="fb-btn" id="fbDataBtn" onclick="document.getElementById('fbDataInput').click()">파일 선택</button>
+                <span class="fb-status" id="fbDataStatus"></span>
+                <input type="file" id="fbDataInput" accept=".json" onchange="handleLocalData(this)">
+            </div>
+        </div>
+
+        <div id="dataSourceBadge" class="data-source" style="display:none;"></div>
+        
+        <div class="badges">
+            <span class="badge">✅ 띄어쓰기 정규화</span>
+            <span class="badge">✅ 대소문자 정규화</span>
+            <span class="badge">✅ O/0 정규화</span>
+            <span class="badge">✅ 쉼표 정규화</span>
+            <span class="badge">✅ 작동불/작동불량 통합</span>
+        </div>
+        
+        <div class="product-tabs" id="productTabs"></div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div id="selectedSymptomBox"></div>
+        
+        <div class="chart-section">
+            <div class="chart-header">
+                <div>
+                    <h2>증상 빈도 분산 분석</h2>
+                    <p>버블을 클릭하면 상세 정보가 표시됩니다 • 버블 크기는 점유율을 나타냅니다</p>
+                </div>
+                <div class="top-buttons">
+                    <button class="top-button active" data-count="10">Top 10</button>
+                    <button class="top-button" data-count="20">Top 20</button>
+                    <button class="top-button" data-count="30">Top 30</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="symptomChart"></canvas>
+            </div>
+        </div>
+        
+        <div>
+            <h2 style="font-size: 24px; font-weight: 700; color: #1F2937; margin-bottom: 16px;">
+                상위 <span id="showCountLabel">10</span>개 증상 상세
+            </h2>
+            <div class="symptoms-grid" id="symptomsGrid"></div>
+        </div>
+    </div>
+    
+    <script>
+    // ====================================================================
+    // DataLoader - 공통 외부 JSON 데이터 로딩 클래스
+    // ====================================================================
+    var DataLoader = {
+        manifest: null,
+        cache: {},
+        dataType: 'symptom',
+        isLocal: location.protocol === 'file:',
+        _storagePrefix: '__dash_symptom_',
+
+        showLoading: function() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        },
+        hideLoading: function() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        },
+        showError: function(msg) {
+            var banner = document.getElementById('errorBanner');
+            banner.textContent = '⚠️ ' + msg;
+            banner.classList.add('show');
+        },
+        hideError: function() {
+            document.getElementById('errorBanner').classList.remove('show');
+        },
+
+        // IndexedDB 대용량 캐싱
+        _dbName: 'DashCache_symptom',
+        _dbVer: 1,
+        _openDB: function() {
+            var self = this;
+            return new Promise(function(resolve, reject) {
+                var req = indexedDB.open(self._dbName, self._dbVer);
+                req.onupgradeneeded = function(e) { e.target.result.createObjectStore('cache'); };
+                req.onsuccess = function(e) { resolve(e.target.result); };
+                req.onerror = function() { reject(req.error); };
+            });
+        },
+        saveToIDB: async function(key, value) {
+            try {
+                var db = await this._openDB();
+                return new Promise(function(resolve) {
+                    var tx = db.transaction('cache', 'readwrite');
+                    tx.objectStore('cache').put(value, key);
+                    tx.oncomplete = function() { resolve(true); };
+                    tx.onerror = function() { resolve(false); };
+                });
+            } catch(e) { return false; }
+        },
+        loadFromIDB: async function(key) {
+            try {
+                var db = await this._openDB();
+                return new Promise(function(resolve) {
+                    var tx = db.transaction('cache', 'readonly');
+                    var req = tx.objectStore('cache').get(key);
+                    req.onsuccess = function() { resolve(req.result || null); };
+                    req.onerror = function() { resolve(null); };
+                });
+            } catch(e) { return null; }
+        },
+
+        loadManifest: async function() {
+            if (this.isLocal) {
+                document.getElementById('fileFallback').classList.add('show');
+                return null;
+            }
+            try {
+                var response = await fetch('manifest.json?t=' + Date.now());
+                if (!response.ok) throw new Error('manifest.json을 찾을 수 없습니다');
+                this.manifest = await response.json();
+                return this.manifest;
+            } catch (e) {
+                this.showError('manifest.json 로드 실패: ' + e.message);
+                return null;
+            }
+        },
+
+        loadPeriod: async function(periodId) {
+            var cacheKey = periodId + '_' + this.dataType;
+            if (this.cache[cacheKey]) return this.cache[cacheKey];
+            
+            if (this.isLocal) {
+                document.getElementById('fbDataRow').style.display = 'flex';
+                document.getElementById('fbDataStatus').textContent = '← ' + periodId + '-' + this.dataType + '.json 선택';
+                return null;
+            }
+            
+            this.showLoading();
+            this.hideError();
+            
+            try {
+                var periodMeta = this.manifest.periods.find(function(p) { return p.id === periodId; });
+                var url;
+                if (periodMeta && periodMeta.files && periodMeta.files[this.dataType]) {
+                    url = periodMeta.files[this.dataType] + '?t=' + Date.now();
+                } else {
+                    url = 'data/' + periodId + '-' + this.dataType + '.json?t=' + Date.now();
+                }
+                
+                var response = await fetch(url);
+                if (!response.ok) throw new Error(url + '을 찾을 수 없습니다');
+                
+                var data = await response.json();
+                this.cache[cacheKey] = data;
+                this.hideLoading();
+                return data;
+            } catch (e) {
+                this.hideLoading();
+                this.showError('데이터 로드 실패: ' + e.message);
+                return null;
+            }
+        },
+
+        populatePeriodSelector: function() {
+            var selector = document.getElementById('periodSelector');
+            selector.innerHTML = '';
+            
+            if (!this.manifest || !this.manifest.periods || this.manifest.periods.length === 0) {
+                selector.innerHTML = '<option value="">사용 가능한 데이터 없음</option>';
+                return;
+            }
+
+            var periods = this.manifest.periods.slice().sort(function(a, b) {
+                return b.id.localeCompare(a.id);
+            });
+
+            periods.forEach(function(period) {
+                var option = document.createElement('option');
+                option.value = period.id;
+                option.textContent = period.label || period.id;
+                selector.appendChild(option);
+            });
+        }
+    };
+
+    // 로컬 파일 로딩 핸들러 (고유 키 + IndexedDB 캐싱)
+    function handleLocalManifest(input) {
+        if (!input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                DataLoader.manifest = JSON.parse(e.target.result);
+                try { localStorage.setItem(DataLoader._storagePrefix + 'manifest', e.target.result); } catch(x) {}
+                DataLoader.populatePeriodSelector();
+                document.getElementById('fbManifestBtn').classList.add('loaded');
+                document.getElementById('fbManifestBtn').textContent = '✅ 로드 완료';
+                document.getElementById('fbManifestStatus').textContent = DataLoader.manifest.periods.length + '개 기간';
+                document.getElementById('fbDataRow').style.display = 'flex';
+                DataLoader.hideError();
+            } catch (err) {
+                DataLoader.showError('manifest.json 파싱 오류: ' + err.message);
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    function handleLocalData(input) {
+        if (!input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                var data = JSON.parse(e.target.result);
+                var periodId = document.getElementById('periodSelector').value;
+                var cacheKey = periodId + '_' + DataLoader.dataType;
+                DataLoader.cache[cacheKey] = data;
+                var saved = await DataLoader.saveToIDB(cacheKey, data);
+                if (!saved) {
+                    console.warn('[캐시] IndexedDB 저장 실패');
+                }
+                document.getElementById('fbDataBtn').classList.add('loaded');
+                document.getElementById('fbDataBtn').textContent = '✅ 로드 완료';
+                document.getElementById('fbDataStatus').textContent = input.files[0].name + (saved ? ' (캐시됨)' : '');
+                await changePeriod(periodId);
+            } catch (err) {
+                DataLoader.showError('데이터 파싱 오류: ' + err.message);
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    // ====================================================================
+    // App - 증상 분석 대시보드 로직
+    // ====================================================================
+    const productColors = {
+        '밥솥': { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' },
+        '정수기': { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
+        '비데': { bg: '#FCE7F3', border: '#EC4899', text: '#9F1239' },
+        '음식물처리기': { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
+        '인덕션레인지': { bg: '#FEF3C7', border: '#F59E0B', text: '#78350F' },
+        '식기세척기': { bg: '#E0E7FF', border: '#6366F1', text: '#3730A3' },
+        '무선청소기': { bg: '#F3E8FF', border: '#A855F7', text: '#6B21A8' },
+        '가습기': { bg: '#FED7E2', border: '#F687B3', text: '#97266D' },
+        '로봇청소기': { bg: '#FFF4E6', border: '#FB923C', text: '#9A3412' },
+        '공기청정기': { bg: '#DCFCE7', border: '#22C55E', text: '#166534' }
+    };
+    
+    // 🆕 데이터는 외부에서 로드
+    let data = {};
+    let products = [];
+    let currentProduct = '';
+    let showCount = 10;
+    let selectedSymptom = null;
+    let chart = null;
+    
+    // 🆕 기간 변경
+    async function changePeriod(periodId) {
+        var loaded = await DataLoader.loadPeriod(periodId);
+        if (!loaded) return;
+        
+        // JSON 구조에 따라 data 매핑
+        if (loaded.data) {
+            data = loaded.data;
+        } else {
+            // JSON 자체가 { 밥솥: {...}, 정수기: {...} } 형태인 경우
+            data = loaded;
+        }
+        
+        // products 목록
+        if (loaded.products) {
+            products = loaded.products;
+        } else {
+            products = Object.keys(data);
+        }
+        
+        // 첫 제품 선택
+        currentProduct = products[0] || '';
+        selectedSymptom = null;
+        
+        // 기간 정보 표시
+        var periodMeta = DataLoader.manifest.periods.find(function(p) { return p.id === periodId; });
+        var info = document.getElementById('periodInfo');
+        if (periodMeta && periodMeta.generated) {
+            info.textContent = '생성일: ' + periodMeta.generated;
+        }
+        
+        // 데이터 소스 배지
+        var badge = document.getElementById('dataSourceBadge');
+        if (loaded.meta) {
+            var totalRecords = loaded.meta.totalRecords || '';
+            badge.textContent = '📅 데이터 기간: ' + (periodMeta ? periodMeta.label : periodId) + 
+                (totalRecords ? ' (' + totalRecords.toLocaleString() + '건)' : '');
+            badge.style.display = 'inline-block';
+        }
+        
+        renderAll();
+    }
+    
+    function renderAll() {
+        renderProductTabs();
+        renderStats();
+        renderChart();
+        renderSymptomsGrid();
+        renderSelectedSymptom();
+    }
+    
+    function renderProductTabs() {
+        const container = document.getElementById('productTabs');
+        container.innerHTML = products.map(product => {
+            const color = productColors[product] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
+            const isActive = product === currentProduct;
+            const productData = data[product];
+            const totalCount = productData ? productData.total_count : 0;
+            return `
+                <button 
+                    class="product-tab ${isActive ? 'active' : ''}"
+                    data-product="${product}"
+                    style="
+                        background-color: ${isActive ? color.border : color.bg};
+                        color: ${isActive ? 'white' : color.text};
+                        border-color: ${color.border};
+                    "
+                >
+                    ${product}
+                    <span style="font-size: 13px; opacity: 0.8; margin-left: 4px;">
+                        (${totalCount.toLocaleString()}건)
+                    </span>
+                </button>
+            `;
+        }).join('');
+    }
+    
+    function renderStats() {
+        const container = document.getElementById('statsGrid');
+        const productData = data[currentProduct];
+        if (!productData) { container.innerHTML = ''; return; }
+        const color = productColors[currentProduct] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
+        
+        container.innerHTML = `
+            <div class="stat-card" style="background-color: ${color.bg};">
+                <div class="stat-label" style="color: ${color.text};">총 문의 건수</div>
+                <div class="stat-value" style="color: ${color.border};">
+                    ${productData.total_count.toLocaleString()}<span style="font-size: 16px; margin-left: 4px;">건</span>
+                </div>
+            </div>
+            <div class="stat-card" style="background-color: ${color.bg};">
+                <div class="stat-label" style="color: ${color.text};">발견된 증상</div>
+                <div class="stat-value" style="color: ${color.border};">
+                    ${productData.symptoms.length}<span style="font-size: 16px; margin-left: 4px;">개</span>
+                </div>
+            </div>
+            <div class="stat-card" style="background-color: ${color.bg};">
+                <div class="stat-label" style="color: ${color.text};">최다 증상</div>
+                <div class="stat-value" style="color: ${color.border}; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    ${productData.symptoms[0] ? productData.symptoms[0].symptom : '-'}
+                </div>
+                <div class="stat-sub" style="color: ${color.text};">
+                    ${productData.symptoms[0] ? productData.symptoms[0].percentage + '%' : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderSelectedSymptom() {
+        const container = document.getElementById('selectedSymptomBox');
+        if (!selectedSymptom) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        const color = productColors[currentProduct] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
+        container.innerHTML = `
+            <div class="selected-symptom" style="background-color: ${color.bg}; border-color: ${color.border};">
+                <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px; flex-wrap: wrap;">
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600; color: ${color.text}; margin-bottom: 8px;">
+                            선택된 증상
+                        </div>
+                        <div style="font-size: 32px; font-weight: 800; color: ${color.border}; margin-bottom: 12px;">
+                            ${selectedSymptom.symptom}
+                        </div>
+                        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                            <div>
+                                <span style="color: #6B7280;">문의 건수: </span>
+                                <span style="font-size: 20px; font-weight: 800; color: #1F2937;">
+                                    ${selectedSymptom.count.toLocaleString()}건
+                                </span>
+                            </div>
+                            <div>
+                                <span style="color: #6B7280;">점유율: </span>
+                                <span style="font-size: 20px; font-weight: 800; color: #1F2937;">
+                                    ${selectedSymptom.percentage}%
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="close-button" onclick="clearSelection()">닫기</button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderChart() {
+        const canvas = document.getElementById('symptomChart');
+        const productData = data[currentProduct];
+        if (!productData) return;
+        const symptoms = productData.symptoms.slice(0, showCount);
+        const color = productColors[currentProduct] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
+        
+        if (chart) chart.destroy();
+        
+        const maxCount = Math.max(...symptoms.map(s => s.count));
+        const suggestedMax = maxCount * 1.2;
+        
+        const ctx = canvas.getContext('2d');
+        chart = new Chart(ctx, {
+            type: 'bubble',
+            data: {
+                datasets: [{
+                    data: symptoms.map((s, i) => ({
+                        x: i + 1,
+                        y: s.count,
+                        r: Math.max(10, Math.min(45, s.percentage * 5))
+                    })),
+                    backgroundColor: color.bg,
+                    borderColor: color.border,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: { top: 40, right: 20, bottom: 20, left: 20 }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        selectedSymptom = symptoms[elements[0].index];
+                        renderSelectedSymptom();
+                        renderSymptomsGrid();
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: '증상 순위', font: { size: 14, weight: 'bold' } },
+                        ticks: { stepSize: 1, callback: v => Math.floor(v) }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        suggestedMax: suggestedMax,
+                        title: { display: true, text: '문의 건수', font: { size: 14, weight: 'bold' } },
+                        ticks: { callback: v => v.toLocaleString() + '건' }
+                    }
+                }
+            },
+            plugins: [{
+                id: 'customLabels',
+                afterDatasetsDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    chart.data.datasets.forEach((dataset, i) => {
+                        const meta = chart.getDatasetMeta(i);
+                        meta.data.forEach((element, index) => {
+                            const symptom = symptoms[index].symptom;
+                            const label = symptom.length > 10 ? symptom.substring(0, 10) + '...' : symptom;
+                            
+                            ctx.fillStyle = '#1F2937';
+                            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'bottom';
+                            
+                            const x = element.x;
+                            const y = element.y - element.options.radius - 8;
+                            
+                            ctx.fillText(label, x, y);
+                        });
+                    });
+                }
+            }]
+        });
+    }
+    
+    function renderSymptomsGrid() {
+        const container = document.getElementById('symptomsGrid');
+        const productData = data[currentProduct];
+        if (!productData) { container.innerHTML = ''; return; }
+        const symptoms = productData.symptoms.slice(0, showCount);
+        const color = productColors[currentProduct] || { bg: '#F3F4F6', border: '#9CA3AF', text: '#374151' };
+        
+        container.innerHTML = symptoms.map((symptom, idx) => {
+            const isSelected = selectedSymptom && selectedSymptom.symptom === symptom.symptom;
+            return `
+                <div 
+                    class="symptom-card ${isSelected ? 'selected' : ''}"
+                    data-symptom-idx="${idx}"
+                    style="
+                        background-color: ${isSelected ? '#E0E7FF' : color.bg};
+                        border-color: ${color.border};
+                    "
+                >
+                    <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                        <span class="symptom-rank" style="color: ${color.text};">${idx + 1}</span>
+                        <span class="symptom-name">${symptom.symptom}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="symptom-count" style="color: ${color.border};">${symptom.count.toLocaleString()}건</span>
+                        <span class="symptom-percent" style="color: ${color.text};">${symptom.percentage}%</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function attachEventListeners() {
+        document.getElementById('productTabs').addEventListener('click', (e) => {
+            const btn = e.target.closest('.product-tab');
+            if (btn) {
+                currentProduct = btn.dataset.product;
+                selectedSymptom = null;
+                renderAll();
+            }
+        });
+        
+        document.querySelectorAll('.top-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                showCount = parseInt(btn.dataset.count);
+                selectedSymptom = null;
+                document.querySelectorAll('.top-button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('showCountLabel').textContent = showCount;
+                renderChart();
+                renderSymptomsGrid();
+                renderSelectedSymptom();
+            });
+        });
+        
+        document.getElementById('symptomsGrid').addEventListener('click', (e) => {
+            const card = e.target.closest('.symptom-card');
+            if (card) {
+                const idx = parseInt(card.dataset.symptomIdx);
+                const productData = data[currentProduct];
+                if (productData) {
+                    selectedSymptom = productData.symptoms[idx];
+                    renderSelectedSymptom();
+                    renderSymptomsGrid();
+                }
+            }
+        });
+    }
+    
+    function clearSelection() {
+        selectedSymptom = null;
+        renderSelectedSymptom();
+        renderSymptomsGrid();
+    }
+    
+    // ====================================================================
+    // 초기화
+    // ====================================================================
+    window.addEventListener('load', async function() {
+        attachEventListeners();
+        
+        var manifest = await DataLoader.loadManifest();
+        
+        if (!manifest && DataLoader.isLocal) {
+            try {
+                var cached = localStorage.getItem(DataLoader._storagePrefix + 'manifest');
+                if (cached) {
+                    DataLoader.manifest = JSON.parse(cached);
+                    manifest = DataLoader.manifest;
+                    document.getElementById('fbManifestBtn').classList.add('loaded');
+                    document.getElementById('fbManifestBtn').textContent = '✅ 캐시 로드됨';
+                    document.getElementById('fbManifestStatus').textContent = manifest.periods.length + '개 기간 (캐시)';
+                    document.getElementById('fbDataRow').style.display = 'flex';
+                }
+            } catch(x) {}
+        }
+        
+        if (!manifest) return;
+        
+        DataLoader.populatePeriodSelector();
+        
+        var selector = document.getElementById('periodSelector');
+        if (selector.options.length > 0) {
+            if (DataLoader.isLocal) {
+                var periodId = selector.value;
+                var cacheKey = periodId + '_' + DataLoader.dataType;
+                try {
+                    var cachedData = await DataLoader.loadFromIDB(cacheKey);
+                    if (cachedData) {
+                        DataLoader.cache[cacheKey] = cachedData;
+                        document.getElementById('fbDataBtn').classList.add('loaded');
+                        document.getElementById('fbDataBtn').textContent = '✅ 캐시 로드됨';
+                        document.getElementById('fbDataStatus').textContent = '캐시된 데이터 사용 중 (IndexedDB)';
+                        console.log('[캐시] IndexedDB에서 복원: ' + cacheKey);
+                    }
+                } catch(x) {
+                    console.warn('[캐시] IndexedDB 복원 실패:', x);
+                }
+            }
+            await changePeriod(selector.value);
+        }
+        
+        selector.addEventListener('change', function() {
+            changePeriod(this.value);
+        });
+    });
+    </script>
+</body>
+</html>

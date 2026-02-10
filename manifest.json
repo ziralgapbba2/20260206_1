@@ -1,0 +1,18 @@
+{
+  "version": "2.0",
+  "dashboard_types": {
+    "reception": "서비스 접수 비교 분석",
+    "symptom": "문의내용 증상 분석",
+    "processing": "처리건 분석"
+  },
+  "periods": [
+    {
+      "id": "2026-01",
+      "label": "2026-01",
+      "generated": "2026-02-10",
+      "files": {
+        "reception": "data/2026-01-reception.json"
+      }
+    }
+  ]
+}

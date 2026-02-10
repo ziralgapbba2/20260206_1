@@ -1,0 +1,1771 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>서비스 접수 대시보드</title>
+    
+    <!-- pako 라이브러리 (데이터 압축 해제용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    
+    <!-- 
+    ====================================================================
+    리팩토링 버전 - 외부 JSON 데이터 로딩
+    ====================================================================
+    파일 구조:
+    📁 dashboard/
+      ├── index.html          (이 파일)
+      ├── chart.umd.js        (Chart.js 라이브러리)
+      ├── manifest.json        (데이터 목록)
+      └── 📁 data/
+          ├── 2026-01.json     (월별 데이터)
+          ├── 2026-02.json
+          └── ...
+    
+    데이터 업데이트 방법:
+      python convert_excel_to_json.py 파일.xlsx 2026-02
+    ====================================================================
+    -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", "Segoe UI", sans-serif;
+            background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .main-nav {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2px solid #F1F5F9;
+        }
+        .nav-button {
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 2px solid #667EEA;
+            background: white;
+            color: #667EEA;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .nav-button:hover {
+            background: #667EEA;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        .nav-button.active {
+            background: #667EEA;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        h1 {
+            font-size: 36px;
+            font-weight: 800;
+            color: #667EEA;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #64748B;
+            font-size: 15px;
+            margin-bottom: 24px;
+        }
+
+        /* ===== 기간 선택 드롭다운 ===== */
+        .period-selector-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
+            border-radius: 12px;
+            border: 2px solid #C7D2FE;
+        }
+        .period-selector-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #4338CA;
+        }
+        .period-selector {
+            padding: 10px 36px 10px 16px;
+            border-radius: 8px;
+            border: 2px solid #A5B4FC;
+            background: white;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1E293B;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%234338CA' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            transition: all 0.2s;
+        }
+        .period-selector:hover {
+            border-color: #667EEA;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        .period-selector:focus {
+            outline: none;
+            border-color: #667EEA;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+        .period-info {
+            font-size: 13px;
+            color: #6366F1;
+            font-weight: 500;
+        }
+
+        /* ===== 로딩 상태 ===== */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .loading-overlay.show { display: flex; }
+        .loading-spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #E2E8F0;
+            border-top-color: #667EEA;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667EEA;
+        }
+
+        /* ===== 에러 상태 ===== */
+        .error-banner {
+            display: none;
+            padding: 16px 24px;
+            background: #FEF2F2;
+            border: 2px solid #FCA5A5;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            color: #991B1B;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .error-banner.show { display: block; }
+
+        /* 로컬 파일 직접 로딩 패널 */
+        .file-fallback {
+            display: none;
+            padding: 24px;
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            border: 2px solid #F59E0B;
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .file-fallback.show { display: block; }
+        .file-fallback h3 {
+            font-size: 16px; font-weight: 700; color: #92400E; margin-bottom: 8px;
+        }
+        .file-fallback p {
+            font-size: 13px; color: #78350F; margin-bottom: 16px; line-height: 1.6;
+        }
+        .file-fallback .fb-row {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .file-fallback .fb-label {
+            font-size: 13px; font-weight: 700; color: #92400E; min-width: 120px;
+        }
+        .file-fallback .fb-btn {
+            padding: 8px 20px; border-radius: 8px; border: 2px solid #D97706;
+            background: white; color: #92400E; font-weight: 600; font-size: 13px;
+            cursor: pointer; font-family: inherit; transition: all 0.2s;
+        }
+        .file-fallback .fb-btn:hover { background: #FEF3C7; }
+        .file-fallback .fb-btn.loaded {
+            background: #D1FAE5; border-color: #059669; color: #065F46;
+        }
+        .file-fallback .fb-status {
+            font-size: 12px; color: #059669; font-weight: 600;
+        }
+        .file-fallback input[type="file"] { display: none; }
+
+        .tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            background: #F1F5F9;
+            color: #64748B;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667EEA;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            border-radius: 16px;
+            padding: 24px;
+            border: 2px solid;
+        }
+        .stat-label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .stat-badge {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .filters-container {
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+            margin-bottom: 32px;
+        }
+        .filters {
+            background: #F8FAFC;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s;
+        }
+        .filters.scrolled {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+        .filter-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+        .filter-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 12px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid #E2E8F0;
+            background: white;
+            color: #64748B;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            border-color: #CBD5E1;
+        }
+        .filter-btn.active {
+            color: white !important;
+            border-color: transparent;
+        }
+        .filter-btn.active[data-type="center1"] {
+            background: #EC4899;
+        }
+        .filter-btn.active[data-type="center2"] {
+            background: #667EEA;
+        }
+        .filter-btn.active[data-type="payment"] {
+            background: #10B981;
+        }
+        .chart-container {
+            background: #F8FAFC;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+        .chart-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+        .chart-description {
+            font-size: 13px;
+            color: #64748B;
+            margin-bottom: 24px;
+        }
+        .chart-wrapper {
+            position: relative;
+            height: 450px;
+        }
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+        .chart-small {
+            background: #F8FAFC;
+            border-radius: 16px;
+            padding: 24px;
+        }
+        .chart-small .chart-wrapper {
+            height: 350px;
+        }
+        .detail-cards {
+            margin-top: 32px;
+        }
+        .detail-cards-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+        .detail-cards-subtitle {
+            font-size: 13px;
+            color: #64748B;
+            margin-bottom: 20px;
+        }
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }
+        .detail-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid;
+            position: relative;
+        }
+        .detail-card.increase {
+            border-color: #10B981;
+            background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+        }
+        .detail-card.decrease {
+            border-color: #EF4444;
+            background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+        }
+        .card-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .card-badge.increase {
+            background: #10B981;
+            color: white;
+        }
+        .card-badge.decrease {
+            background: #EF4444;
+            color: white;
+        }
+        .card-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 12px;
+            padding-right: 60px;
+        }
+        .card-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .card-row-label {
+            font-size: 12px;
+            color: #64748B;
+        }
+        .card-row-value {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .card-change {
+            text-align: center;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 16px;
+            font-weight: 800;
+        }
+        .card-change.increase {
+            background: #10B981;
+            color: white;
+        }
+        .card-change.decrease {
+            background: #EF4444;
+            color: white;
+        }
+        .fault-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 2px dashed rgba(0,0,0,0.1);
+        }
+        .fault-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+        .fault-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+        .fault-name {
+            color: #475569;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+        .fault-count {
+            font-weight: 700;
+            color: #1E293B;
+            margin-right: 8px;
+        }
+        .fault-percentage {
+            font-size: 11px;
+            color: #64748B;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        /* 미처리 테이블 스타일 */
+        .unprocessed-section {
+            margin-top: 32px;
+            background: #FEF2F2;
+            border-radius: 16px;
+            padding: 28px;
+            border: 2px solid #FCA5A5;
+        }
+        .unprocessed-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #991B1B;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .unprocessed-subtitle {
+            font-size: 13px;
+            color: #B91C1C;
+            margin-bottom: 20px;
+        }
+        .unprocessed-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #FCA5A5;
+        }
+        .unprocessed-table thead {
+            background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+        }
+        .unprocessed-table th {
+            padding: 16px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 700;
+            color: #991B1B;
+            border-bottom: 2px solid #FCA5A5;
+        }
+        .unprocessed-table td {
+            padding: 14px 16px;
+            font-size: 14px;
+            color: #1E293B;
+            border-bottom: 1px solid #FEE2E2;
+        }
+        .unprocessed-table tbody tr:hover {
+            background: #FEF2F2;
+        }
+        .unprocessed-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .center-type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .center-type-badge.install {
+            background: #E0E7FF;
+            color: #4C1D95;
+        }
+        .center-type-badge.store {
+            background: #FCE7F3;
+            color: #831843;
+        }
+        .unprocessed-count {
+            font-weight: 700;
+            color: #DC2626;
+        }
+        .unprocessed-rate {
+            font-weight: 700;
+            color: #DC2626;
+        }
+        .analysis-item-details {
+            display: none;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px dashed rgba(0,0,0,0.1);
+        }
+        .analysis-item-details.show {
+            display: block;
+        }
+        .analysis-detail-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 8px;
+        }
+        .analysis-fault-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            margin-bottom: 4px;
+            background: white;
+            border-radius: 6px;
+            font-size: 11px;
+        }
+        .analysis-fault-name {
+            flex: 1;
+            color: #475569;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+        .analysis-fault-count {
+            font-weight: 700;
+            color: #1E293B;
+            margin-right: 6px;
+        }
+        .analysis-fault-percentage {
+            font-size: 10px;
+            color: #64748B;
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+
+        /* 분석 섹션 스타일 */
+        .analysis-section {
+            margin-top: 32px;
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            border-radius: 16px;
+            padding: 28px;
+            border: 2px solid #FCD34D;
+        }
+        .analysis-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #78350F;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .analysis-subtitle {
+            font-size: 13px;
+            color: #92400E;
+            margin-bottom: 20px;
+        }
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .analysis-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid;
+        }
+        .analysis-box.increase {
+            border-color: #10B981;
+        }
+        .analysis-box.decrease {
+            border-color: #EF4444;
+        }
+        .analysis-box-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .analysis-box.increase .analysis-box-title {
+            color: #10B981;
+        }
+        .analysis-box.decrease .analysis-box-title {
+            color: #EF4444;
+        }
+        .analysis-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            background: #F8FAFC;
+            border-left: 4px solid;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .analysis-item:hover {
+            background: #E2E8F0;
+            transform: translateX(4px);
+        }
+        .analysis-item.active {
+            background: #E0E7FF;
+        }
+        .analysis-item.increase {
+            border-left-color: #10B981;
+        }
+        .analysis-item.decrease {
+            border-left-color: #EF4444;
+        }
+        .analysis-item-header {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1E293B;
+            margin-bottom: 4px;
+        }
+        .analysis-item-detail {
+            font-size: 12px;
+            color: #64748B;
+        }
+        .analysis-item-change {
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 6px;
+        }
+        .analysis-item-change.increase {
+            color: #10B981;
+        }
+        .analysis-item-change.decrease {
+            color: #EF4444;
+        }
+
+        /* 개선된 카드 스타일 */
+        .product-cards-container {
+            margin-top: 30px;
+            padding: 25px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        .product-cards-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 8px;
+        }
+        .product-cards-subtitle {
+            font-size: 14px;
+            color: #6B7280;
+            margin-bottom: 25px;
+        }
+        .product-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #E5E7EB;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .product-card.increase { border-color: #10B981; }
+        .product-card.decrease { border-color: #EF4444; }
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .product-card-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .product-card-badge.increase { background: #D1FAE5; color: #065F46; }
+        .product-card-badge.decrease { background: #FEE2E2; color: #991B1B; }
+        .product-card-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 16px;
+            padding-right: 60px;
+            line-height: 1.4;
+        }
+        .product-card-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .product-card-stat-label { color: #6B7280; font-weight: 500; }
+        .product-card-stat-value { font-weight: 700; color: #1F2937; }
+        .product-card-stat-value.orange { color: #F59E0B; }
+        .product-card-stat-value.blue { color: #3B82F6; }
+        .product-card-change-box {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .product-card-change-box.increase { background: #D1FAE5; color: #065F46; }
+        .product-card-change-box.decrease { background: #FEE2E2; color: #991B1B; }
+        .product-card-change-label {
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 20px; }
+            .charts-row { grid-template-columns: 1fr; }
+            .filter-group { grid-template-columns: 1fr; }
+            .filters-container { top: 10px; }
+            .analysis-grid { grid-template-columns: 1fr; }
+            .unprocessed-table { font-size: 12px; }
+            .unprocessed-table th, .unprocessed-table td { padding: 10px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 로딩 오버레이 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">데이터를 불러오는 중...</div>
+    </div>
+
+    <div class="container">
+        <!-- 메인 네비게이션 -->
+        <div class="main-nav">
+            <a href="index.html" class="nav-button active">📊 서비스 접수 비교 분석</a>
+            <a href="symptom_analysis.html" class="nav-button">🔍 문의내용 증상 분석</a>
+            <a href="processing_dashboard.html" class="nav-button">📋 처리건 분석</a>
+        </div>
+        
+        <h1>서비스 접수 - 제품별, 센터별 현황</h1>
+        <p class="subtitle" id="subtitleText">데이터 로딩 중...</p>
+
+        <!-- 🆕 기간 선택 드롭다운 -->
+        <div class="period-selector-container">
+            <span class="period-selector-label">📅 분석 기간:</span>
+            <select class="period-selector" id="periodSelector">
+                <option value="">로딩 중...</option>
+            </select>
+            <span class="period-info" id="periodInfo"></span>
+        </div>
+
+        <!-- 에러 배너 -->
+        <div class="error-banner" id="errorBanner"></div>
+
+        <!-- 🆕 로컬 파일 직접 로딩 패널 (file:// 프로토콜용) -->
+        <div class="file-fallback" id="fileFallback">
+            <h3>📁 로컬 파일 모드</h3>
+            <p>로컬(file://)에서는 자동 로딩이 불가합니다. 아래 버튼으로 JSON 파일을 직접 선택하세요.<br>
+            또는 로컬 서버를 사용하세요: <code style="background:#FEF3C7;padding:2px 6px;border-radius:4px;font-size:12px;">python -m http.server 8000</code> → <code style="background:#FEF3C7;padding:2px 6px;border-radius:4px;font-size:12px;">http://localhost:8000</code></p>
+            <div class="fb-row">
+                <span class="fb-label">① manifest.json</span>
+                <button class="fb-btn" id="fbManifestBtn" onclick="document.getElementById('fbManifestInput').click()">파일 선택</button>
+                <span class="fb-status" id="fbManifestStatus"></span>
+                <input type="file" id="fbManifestInput" accept=".json" onchange="handleLocalManifest(this)">
+            </div>
+            <div class="fb-row" id="fbDataRow" style="display:none;">
+                <span class="fb-label">② 데이터 JSON</span>
+                <button class="fb-btn" id="fbDataBtn" onclick="document.getElementById('fbDataInput').click()">파일 선택</button>
+                <span class="fb-status" id="fbDataStatus"></span>
+                <input type="file" id="fbDataInput" accept=".json" onchange="handleLocalData(this)">
+            </div>
+        </div>
+        
+        <div class="tabs" id="tabsContainer"></div>
+
+        <div id="statsArea" class="stats-grid"></div>
+        
+        <div class="filters-container">
+            <div class="filters" id="filtersBox">
+                <div class="filter-group">
+                    <div class="filter-item">
+                        <div class="filter-label">📍 센터구분:</div>
+                        <div class="filter-buttons" id="filter1"></div>
+                    </div>
+                    <div class="filter-item">
+                        <div class="filter-label">🏢 센터선택:</div>
+                        <div class="filter-buttons" id="filter2"></div>
+                    </div>
+                    <div class="filter-item">
+                        <div class="filter-label">💰 유무상 구분:</div>
+                        <div class="filter-buttons" id="filter3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chartContainer"></div>
+        
+        <div id="detailCards"></div>
+    </div>
+
+    <!-- 컨버터 데이터 자동 감지 (같은 폴더의 data_service.js) -->
+    <script src="data_service.js" onerror="this.onerror=null;this.remove()"></script>
+
+    <script src="chart.umd.js"></script>
+    <script>if(typeof Chart==='undefined')document.write('<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"><\/script>');</script>
+    <script>
+    // ====================================================================
+    // DataLoader - 외부 JSON 데이터 로딩 클래스
+    // ====================================================================
+    var DataLoader = {
+        manifest: null,
+        cache: {},
+        basePath: 'data/',
+        isLocal: location.protocol === 'file:',
+
+        showLoading: function() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        },
+        hideLoading: function() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        },
+        showError: function(msg) {
+            var banner = document.getElementById('errorBanner');
+            banner.textContent = '⚠️ ' + msg;
+            banner.classList.add('show');
+        },
+        hideError: function() {
+            document.getElementById('errorBanner').classList.remove('show');
+        },
+
+        loadManifest: async function() {
+            if (this.isLocal) {
+                document.getElementById('fileFallback').classList.add('show');
+                return null; // 파일 선택 대기
+            }
+            try {
+                var response = await fetch('manifest.json?t=' + Date.now());
+                if (!response.ok) throw new Error('manifest.json을 찾을 수 없습니다');
+                this.manifest = await response.json();
+                return this.manifest;
+            } catch (e) {
+                this.showError('manifest.json 로드 실패: ' + e.message);
+                return null;
+            }
+        },
+
+        dataType: 'reception',
+
+        loadPeriod: async function(periodId) {
+            var cacheKey = periodId + '_' + this.dataType;
+            if (this.cache[cacheKey]) {
+                return this.cache[cacheKey];
+            }
+            
+            if (this.isLocal) {
+                // 로컬 모드: 데이터 파일 선택 요청
+                document.getElementById('fbDataRow').style.display = 'flex';
+                document.getElementById('fbDataStatus').textContent = '← ' + periodId + '-' + this.dataType + '.json 선택';
+                return null;
+            }
+            
+            this.showLoading();
+            this.hideError();
+            
+            try {
+                var periodMeta = this.manifest.periods.find(function(p) { return p.id === periodId; });
+                var url;
+                if (periodMeta && periodMeta.files && periodMeta.files[this.dataType]) {
+                    url = periodMeta.files[this.dataType] + '?t=' + Date.now();
+                } else {
+                    url = this.basePath + periodId + '-' + this.dataType + '.json?t=' + Date.now();
+                }
+                
+                var response = await fetch(url);
+                if (!response.ok) throw new Error(url + '을 찾을 수 없습니다');
+                
+                var data = await response.json();
+                this.cache[cacheKey] = data;
+                this.hideLoading();
+                return data;
+            } catch (e) {
+                this.hideLoading();
+                this.showError('데이터 로드 실패: ' + e.message);
+                return null;
+            }
+        },
+
+        populatePeriodSelector: function() {
+            var selector = document.getElementById('periodSelector');
+            selector.innerHTML = '';
+            
+            if (!this.manifest || !this.manifest.periods || this.manifest.periods.length === 0) {
+                selector.innerHTML = '<option value="">사용 가능한 데이터 없음</option>';
+                return;
+            }
+
+            var periods = this.manifest.periods.slice().sort(function(a, b) {
+                return b.id.localeCompare(a.id);
+            });
+
+            periods.forEach(function(period) {
+                var option = document.createElement('option');
+                option.value = period.id;
+                option.textContent = period.label || period.id;
+                selector.appendChild(option);
+            });
+        }
+    };
+
+    // 로컬 파일 로딩 핸들러 (localStorage 캐싱)
+    function handleLocalManifest(input) {
+        if (!input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                DataLoader.manifest = JSON.parse(e.target.result);
+                // localStorage에 캐싱
+                try { localStorage.setItem('__dash_manifest', e.target.result); } catch(x) {}
+                DataLoader.populatePeriodSelector();
+                document.getElementById('fbManifestBtn').classList.add('loaded');
+                document.getElementById('fbManifestBtn').textContent = '✅ 로드 완료';
+                document.getElementById('fbManifestStatus').textContent = DataLoader.manifest.periods.length + '개 기간';
+                document.getElementById('fbDataRow').style.display = 'flex';
+                DataLoader.hideError();
+            } catch (err) {
+                DataLoader.showError('manifest.json 파싱 오류: ' + err.message);
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    function handleLocalData(input) {
+        if (!input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                var data = JSON.parse(e.target.result);
+                var periodId = document.getElementById('periodSelector').value;
+                var cacheKey = periodId + '_' + DataLoader.dataType;
+                DataLoader.cache[cacheKey] = data;
+                // localStorage에 캐싱
+                try { localStorage.setItem('__dash_' + cacheKey, e.target.result); } catch(x) {}
+                document.getElementById('fbDataBtn').classList.add('loaded');
+                document.getElementById('fbDataBtn').textContent = '✅ 로드 완료';
+                document.getElementById('fbDataStatus').textContent = input.files[0].name;
+                await app.changePeriod(periodId);
+            } catch (err) {
+                DataLoader.showError('데이터 파싱 오류: ' + err.message);
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    // ====================================================================
+    // App - 메인 대시보드 로직 (기존 로직 유지, 데이터 로딩만 변경)
+    // ====================================================================
+    window.addEventListener('scroll', function() {
+        var filtersBox = document.getElementById('filtersBox');
+        if (filtersBox && window.scrollY > 300) {
+            filtersBox.classList.add('scrolled');
+        } else if (filtersBox) {
+            filtersBox.classList.remove('scrolled');
+        }
+    });
+    
+    // DASHBOARD_DATA를 전역 변수로 유지 (기존 로직 호환)
+    var DASHBOARD_DATA = null;
+
+    var app = {
+        currentTab: "전체",
+        charts: [],
+        filters: {
+            "센터구분": "전체",
+            "센터구분2": "전체",
+            "유무상처리": "전체"
+        },
+        
+        // 🆕 기간 변경 시 데이터 로드
+        changePeriod: async function(periodId) {
+            var data = await DataLoader.loadPeriod(periodId);
+            if (!data) return;
+            
+            DASHBOARD_DATA = data;
+            
+            // 기간 정보 표시
+            var periodMeta = DataLoader.manifest.periods.find(function(p) { return p.id === periodId; });
+            var info = document.getElementById('periodInfo');
+            if (periodMeta && periodMeta.generated) {
+                info.textContent = '생성일: ' + periodMeta.generated;
+            }
+            
+            // 부제목 업데이트
+            var months = this.getMonthLabels();
+            document.getElementById('subtitleText').textContent = 
+                '전월(' + months.last + ') vs 당월(' + months.current + ') 트렌드 비교 - 필터 연동';
+            
+            // 필터 초기화 및 다시 렌더링
+            this.filters = { "센터구분": "전체", "센터구분2": "전체", "유무상처리": "전체" };
+            this.initFilters();
+            this.render();
+        },
+
+        // 🆕 데이터에서 월 라벨 추출
+        getMonthLabels: function() {
+            if (!DASHBOARD_DATA || !DASHBOARD_DATA.aggregated_data) return { last: '?', current: '?' };
+            var allData = DASHBOARD_DATA.aggregated_data["전체|전체|전체"];
+            if (!allData || !allData.monthly_stats) return { last: '?', current: '?' };
+            
+            var months = Object.keys(allData.monthly_stats).sort();
+            if (months.length >= 2) {
+                return { 
+                    last: months[0].replace(/^\d{4}-/, '') + '월', 
+                    current: months[1].replace(/^\d{4}-/, '') + '월' 
+                };
+            }
+            return { last: '?', current: '?' };
+        },
+        
+        switchTab: function(tab) {
+            this.currentTab = tab;
+            document.querySelectorAll('.tab').forEach(function(t) { 
+                t.classList.remove('active'); 
+            });
+            var activeTab = document.querySelector('[data-tab="' + tab + '"]');
+            if (activeTab) activeTab.classList.add('active');
+            this.render();
+        },
+        
+        setFilter: function(type, value) {
+            this.filters[type] = value;
+            this.updateFilterButtons();
+            this.render();
+        },
+        
+        updateFilterButtons: function() {
+            document.querySelectorAll('.filter-btn').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            
+            var filter1 = this.filters["센터구분"];
+            var filter2 = this.filters["센터구분2"];
+            var filter3 = this.filters["유무상처리"];
+            
+            document.querySelectorAll('[data-filter="' + filter1 + '"]').forEach(function(btn) {
+                btn.classList.add('active');
+            });
+            document.querySelectorAll('[data-filter="' + filter2 + '"]').forEach(function(btn) {
+                btn.classList.add('active');
+            });
+            document.querySelectorAll('[data-filter="' + filter3 + '"]').forEach(function(btn) {
+                btn.classList.add('active');
+            });
+        },
+        
+        destroyCharts: function() {
+            this.charts.forEach(function(chart) { 
+                if (chart) chart.destroy(); 
+            });
+            this.charts = [];
+        },
+        
+        getCurrentData: function() {
+            if (!DASHBOARD_DATA) return null;
+            var key = this.filters["센터구분"] + "|" + this.filters["센터구분2"] + "|" + this.filters["유무상처리"];
+            return DASHBOARD_DATA.aggregated_data[key] || DASHBOARD_DATA.aggregated_data["전체|전체|전체"];
+        },
+        
+        getFilterDescription: function() {
+            var f1 = this.filters["센터구분"];
+            var f2 = this.filters["센터구분2"];
+            var f3 = this.filters["유무상처리"];
+            
+            var parts = [];
+            if (f1 !== "전체") parts.push(f1);
+            if (f2 !== "전체") parts.push(f2);
+            if (f3 !== "전체") {
+                if (f3 === "Y") parts.push("유상");
+                else if (f3 === "N") parts.push("무상");
+                else parts.push(f3);
+            }
+            
+            return parts.length > 0 ? " (" + parts.join(" + ") + ")" : "";
+        },
+        
+        initTabs: function() {
+            var tabsHtml = '';
+            var tabs = ['전체', '제품별', '서비스별', '센터별'];
+            var self = this;
+            
+            tabs.forEach(function(tab, index) {
+                var activeClass = index === 0 ? ' active' : '';
+                tabsHtml += '<button class="tab' + activeClass + '" data-tab="' + tab + '">' + tab + '</button>';
+            });
+            
+            document.getElementById('tabsContainer').innerHTML = tabsHtml;
+            
+            document.querySelectorAll('.tab').forEach(function(tabEl) {
+                tabEl.addEventListener('click', function() {
+                    self.switchTab(this.getAttribute('data-tab'));
+                });
+            });
+        },
+        
+        initFilters: function() {
+            if (!DASHBOARD_DATA) return;
+            var data = DASHBOARD_DATA;
+            var self = this;
+            
+            var html1 = '<button class="filter-btn active" data-filter="전체" data-type="center1">전체</button>';
+            (data.filter_options["센터구분"] || []).forEach(function(opt) {
+                html1 += '<button class="filter-btn" data-filter="' + opt + '" data-type="center1">' + opt + '</button>';
+            });
+            document.getElementById('filter1').innerHTML = html1;
+            
+            var html2 = '<button class="filter-btn active" data-filter="전체" data-type="center2">전체</button>';
+            (data.filter_options["센터구분2"] || []).forEach(function(opt) {
+                html2 += '<button class="filter-btn" data-filter="' + opt + '" data-type="center2">' + opt + '</button>';
+            });
+            document.getElementById('filter2').innerHTML = html2;
+            
+            var html3 = '<button class="filter-btn active" data-filter="전체" data-type="payment">전체</button>';
+            html3 += '<button class="filter-btn" data-filter="Y" data-type="payment">유상</button>';
+            html3 += '<button class="filter-btn" data-filter="N" data-type="payment">무상</button>';
+            html3 += '<button class="filter-btn" data-filter="미처리" data-type="payment">미처리</button>';
+            document.getElementById('filter3').innerHTML = html3;
+            
+            document.querySelectorAll('#filter1 .filter-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    self.setFilter('센터구분', this.getAttribute('data-filter'));
+                });
+            });
+            document.querySelectorAll('#filter2 .filter-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    self.setFilter('센터구분2', this.getAttribute('data-filter'));
+                });
+            });
+            document.querySelectorAll('#filter3 .filter-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    self.setFilter('유무상처리', this.getAttribute('data-filter'));
+                });
+            });
+        },
+        
+        renderStats: function() {
+            var data = this.getCurrentData();
+            if (!data) return;
+            
+            var monthKeys = Object.keys(data.monthly_stats).sort();
+            var lastMonth = data.monthly_stats[monthKeys[0]];
+            var thisMonth = data.monthly_stats[monthKeys[1]];
+            var months = this.getMonthLabels();
+            
+            var avgChange = thisMonth["일평균접수건"] - lastMonth["일평균접수건"];
+            var avgChangePercent = lastMonth["일평균접수건"] > 0 
+                ? ((avgChange / lastMonth["일평균접수건"]) * 100).toFixed(1)
+                : 0;
+
+            document.getElementById('statsArea').innerHTML = 
+                '<div class="stat-card" style="background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%); border-color: #A5B4FC;">' +
+                    '<div class="stat-label" style="color: #4C1D95;">전월 총 접수</div>' +
+                    '<div class="stat-value" style="color: #5B21B6;">' + lastMonth["접수건수"].toLocaleString() + '건</div>' +
+                    '<div class="stat-badge" style="color: #6366F1; background: rgba(99, 102, 241, 0.1);">' +
+                        '당월처리율 ' + lastMonth["당월처리율"].toFixed(1) + '%' +
+                    '</div>' +
+                '</div>' +
+                '<div class="stat-card" style="background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%); border-color: #FCD34D;">' +
+                    '<div class="stat-label" style="color: #78350F;">당월 총 접수</div>' +
+                    '<div class="stat-value" style="color: #92400E;">' + thisMonth["접수건수"].toLocaleString() + '건</div>' +
+                    '<div class="stat-badge" style="color: #F59E0B; background: rgba(245, 158, 11, 0.1);">' +
+                        '당월처리율 ' + thisMonth["당월처리율"].toFixed(1) + '%' +
+                    '</div>' +
+                '</div>' +
+                '<div class="stat-card" style="background: linear-gradient(135deg, #E9D5FF 0%, #D8B4FE 100%); border-color: #C084FC;">' +
+                    '<div class="stat-label" style="color: #581C87;">전월 일평균</div>' +
+                    '<div class="stat-value" style="color: #6B21A8;">' + Math.round(lastMonth["일평균접수건"]).toLocaleString() + '건</div>' +
+                '</div>' +
+                '<div class="stat-card" style="background: linear-gradient(135deg, #FCE7F3 0%, #FBCFE8 100%); border-color: #F9A8D4;">' +
+                    '<div class="stat-label" style="color: #831843;">당월 일평균</div>' +
+                    '<div class="stat-value" style="color: #9F1239;">' + Math.round(thisMonth["일평균접수건"]).toLocaleString() + '건</div>' +
+                '</div>' +
+                '<div class="stat-card" style="background: ' + (avgChange >= 0 ? 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)' : 'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)') + '; border-color: ' + (avgChange >= 0 ? '#6EE7B7' : '#FCA5A5') + ';">' +
+                    '<div class="stat-label" style="color: ' + (avgChange >= 0 ? '#065F46' : '#991B1B') + ';">평균 변화율</div>' +
+                    '<div class="stat-value" style="color: ' + (avgChange >= 0 ? '#047857' : '#DC2626') + ';">' + (avgChange >= 0 ? '+' : '') + avgChangePercent + '%</div>' +
+                '</div>';
+        },
+        
+        renderDetailCards: function() {
+            var detailContainer = document.getElementById('detailCards');
+            var data = this.getCurrentData();
+            if (!data) { detailContainer.innerHTML = ''; return; }
+            var cardsHtml = '';
+            var months = this.getMonthLabels();
+            
+            // === 제품별 탭 상세 통계 ===
+            if (this.currentTab === "제품별") {
+                var products = data.products || {};
+                var sorted = [];
+                for (var name in products) {
+                    var counts = products[name];
+                    var change = counts.thisMonth - counts.lastMonth;
+                    var changeRate = counts.lastMonth > 0 ? ((change / counts.lastMonth) * 100) : (counts.thisMonth > 0 ? 100 : 0);
+                    sorted.push({ name: name, lastMonth: counts.lastMonth, thisMonth: counts.thisMonth, change: change, changeRate: changeRate });
+                }
+                sorted.sort(function(a, b) { return Math.abs(b.change) - Math.abs(a.change); });
+                
+                var top5Increase = sorted.filter(function(x) { return x.change > 0; }).slice(0, 5);
+                var top5Decrease = sorted.filter(function(x) { return x.change < 0; }).slice(0, 5);
+                
+                if (top5Increase.length > 0 || top5Decrease.length > 0) {
+                    cardsHtml += '<div class="product-cards-container">';
+                    cardsHtml += '<h3 class="product-cards-title">제품별 접수건 상세현황</h3>';
+                    cardsHtml += '<p class="product-cards-subtitle">증가율 상위 5개 및 감소율 상위 5개</p>';
+                    cardsHtml += '<div class="product-cards-grid">';
+                    
+                    top5Increase.forEach(function(item) {
+                        cardsHtml += '<div class="product-card increase">';
+                        cardsHtml += '<div class="product-card-badge increase">▲ 증가</div>';
+                        cardsHtml += '<div class="product-card-name">' + item.name + '</div>';
+                        cardsHtml += '<div class="product-card-stat"><span class="product-card-stat-label">전월</span><span class="product-card-stat-value orange">' + item.lastMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="product-card-stat"><span class="product-card-stat-label">당월</span><span class="product-card-stat-value blue">' + item.thisMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="product-card-change-box increase"><div class="product-card-change-label">전월 대비</div>+' + item.change.toLocaleString() + '건 (+' + item.changeRate.toFixed(1) + '%)</div>';
+                        cardsHtml += '</div>';
+                    });
+                    
+                    top5Decrease.forEach(function(item) {
+                        cardsHtml += '<div class="product-card decrease">';
+                        cardsHtml += '<div class="product-card-badge decrease">▼ 감소</div>';
+                        cardsHtml += '<div class="product-card-name">' + item.name + '</div>';
+                        cardsHtml += '<div class="product-card-stat"><span class="product-card-stat-label">전월</span><span class="product-card-stat-value orange">' + item.lastMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="product-card-stat"><span class="product-card-stat-label">당월</span><span class="product-card-stat-value blue">' + item.thisMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="product-card-change-box decrease"><div class="product-card-change-label">전월 대비</div>' + item.change.toLocaleString() + '건 (' + item.changeRate.toFixed(1) + '%)</div>';
+                        cardsHtml += '</div>';
+                    });
+                    
+                    cardsHtml += '</div></div>';
+                }
+            }
+            
+            // === 센터별 탭 상세 카드 ===
+            if (this.currentTab === "센터별") {
+                var locationsDetail = data.locations_detail || {};
+                var locationToCenter = DASHBOARD_DATA.location_to_center || {};
+                var allLocations = [];
+                for (var locName in locationsDetail) {
+                    var stats = locationsDetail[locName];
+                    var change = stats.thisMonth - stats.lastMonth;
+                    var changeRate = stats.lastMonth > 0 ? ((change / stats.lastMonth) * 100) : (stats.thisMonth > 0 ? 100 : 0);
+                    allLocations.push({
+                        name: locName,
+                        type: locationToCenter[locName] || '기타',
+                        lastMonth: stats.lastMonth,
+                        thisMonth: stats.thisMonth,
+                        change: change,
+                        changeRate: changeRate,
+                        faults: stats.faults || []
+                    });
+                }
+                allLocations.sort(function(a, b) { return Math.abs(b.change) - Math.abs(a.change); });
+                
+                var top5Up = allLocations.filter(function(x) { return x.change > 0; }).slice(0, 5);
+                var top5Down = allLocations.filter(function(x) { return x.change < 0; }).slice(0, 5);
+                var combined = top5Up.concat(top5Down);
+                
+                if (combined.length > 0) {
+                    cardsHtml += '<div class="detail-cards"><h3 class="detail-cards-title">센터별 증감 상위 현황</h3>';
+                    cardsHtml += '<p class="detail-cards-subtitle">전월 대비 증가/감소 상위 5개 센터</p>';
+                    cardsHtml += '<div class="cards-grid">';
+                    
+                    combined.forEach(function(item) {
+                        var cls = item.change >= 0 ? 'increase' : 'decrease';
+                        var arrow = item.change >= 0 ? '▲' : '▼';
+                        
+                        cardsHtml += '<div class="detail-card ' + cls + '">';
+                        cardsHtml += '<div class="card-badge ' + cls + '">' + arrow + ' ' + (item.change >= 0 ? '증가' : '감소') + '</div>';
+                        cardsHtml += '<div class="card-name">' + item.name + '</div>';
+                        cardsHtml += '<div class="card-row"><span class="card-row-label">전월</span><span class="card-row-value">' + item.lastMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="card-row"><span class="card-row-label">당월</span><span class="card-row-value">' + item.thisMonth.toLocaleString() + '건</span></div>';
+                        cardsHtml += '<div class="card-change ' + cls + '">' + (item.change >= 0 ? '+' : '') + item.change.toLocaleString() + '건 (' + item.changeRate.toFixed(1) + '%)</div>';
+                        
+                        // 고장 상세
+                        if (item.faults && item.faults.length > 0) {
+                            cardsHtml += '<div class="fault-section"><div class="fault-title">🔧 고장내용소분류 상위</div>';
+                            item.faults.slice(0, 5).forEach(function(fault) {
+                                var total = fault.lastMonth + fault.thisMonth;
+                                cardsHtml += '<div class="fault-item"><span class="fault-name">' + fault.name + '</span><span class="fault-count">' + total.toLocaleString() + '건</span><span class="fault-percentage">(전월 ' + fault.lastMonth + ' / 당월 ' + fault.thisMonth + ')</span></div>';
+                            });
+                            cardsHtml += '</div>';
+                        }
+                        
+                        cardsHtml += '</div>';
+                    });
+                    
+                    cardsHtml += '</div></div>';
+                }
+            }
+            
+            detailContainer.innerHTML = cardsHtml;
+        },
+        
+        renderCharts: function() {
+            this.destroyCharts();
+            var container = document.getElementById('chartContainer');
+            var data = this.getCurrentData();
+            if (!data) { container.innerHTML = ''; return; }
+            
+            var filterDesc = this.getFilterDescription();
+            var months = this.getMonthLabels();
+            var monthKeys = Object.keys(data.monthly_stats).sort();
+            
+            if (this.currentTab === "전체") {
+                // 일자별 차트 + 분석
+                var analysisHtml = '';
+                
+                if (data.analysis) {
+                    var analysis = data.analysis;
+                    analysisHtml = '<div class="analysis-section"><div class="analysis-title">📈 주요 증감 분석' + filterDesc + '</div>';
+                    analysisHtml += '<div class="analysis-subtitle">전월 대비 가장 큰 변화를 보인 제품/센터</div>';
+                    analysisHtml += '<div class="analysis-grid">';
+                    
+                    // 증가 항목
+                    if (analysis.increase && analysis.increase.length > 0) {
+                        analysisHtml += '<div class="analysis-box increase"><div class="analysis-box-title">📈 증가 상위</div>';
+                        analysis.increase.forEach(function(item, idx) {
+                            var itemId = 'analysis-inc-' + idx;
+                            var faultDetails = item.faults || [];
+                            analysisHtml += '<div class="analysis-item increase" data-item-id="' + itemId + '">';
+                            analysisHtml += '<div class="analysis-item-header">' + item.name + '</div>';
+                            analysisHtml += '<div class="analysis-item-detail">전월 ' + item.lastMonth + '건 → 당월 ' + item.thisMonth + '건</div>';
+                            analysisHtml += '<div class="analysis-item-change increase">+' + item.change + '건 (+' + item.changeRate.toFixed(1) + '%)</div>';
+                            
+                            if (faultDetails.length > 0) {
+                                analysisHtml += '<div class="analysis-item-details" id="' + itemId + '">';
+                                analysisHtml += '<div class="analysis-detail-title">🔧 고장내용소분류 상위 5개</div>';
+                                faultDetails.forEach(function(fault) {
+                                    var totalCount = fault.lastMonth + fault.thisMonth;
+                                    analysisHtml += '<div class="analysis-fault-item"><span class="analysis-fault-name">' + fault.name + '</span><span class="analysis-fault-count">' + totalCount.toLocaleString() + '건</span><span class="analysis-fault-percentage">(전월 ' + fault.lastMonth + ' / 당월 ' + fault.thisMonth + ')</span></div>';
+                                });
+                                analysisHtml += '</div>';
+                            }
+                            analysisHtml += '</div>';
+                        });
+                        analysisHtml += '</div>';
+                    }
+                    
+                    // 감소 항목
+                    if (analysis.decrease && analysis.decrease.length > 0) {
+                        analysisHtml += '<div class="analysis-box decrease"><div class="analysis-box-title">📉 감소 상위</div>';
+                        analysis.decrease.forEach(function(item, idx) {
+                            var itemId = 'analysis-dec-' + idx;
+                            var faultDetails = item.faults || [];
+                            analysisHtml += '<div class="analysis-item decrease" data-item-id="' + itemId + '">';
+                            analysisHtml += '<div class="analysis-item-header">' + item.name + '</div>';
+                            analysisHtml += '<div class="analysis-item-detail">전월 ' + item.lastMonth + '건 → 당월 ' + item.thisMonth + '건</div>';
+                            analysisHtml += '<div class="analysis-item-change decrease">' + item.change + '건 (' + item.changeRate.toFixed(1) + '%)</div>';
+                            
+                            if (faultDetails.length > 0) {
+                                analysisHtml += '<div class="analysis-item-details" id="' + itemId + '">';
+                                analysisHtml += '<div class="analysis-detail-title">🔧 고장내용소분류 상위 5개</div>';
+                                faultDetails.forEach(function(fault) {
+                                    var totalCount = fault.lastMonth + fault.thisMonth;
+                                    analysisHtml += '<div class="analysis-fault-item"><span class="analysis-fault-name">' + fault.name + '</span><span class="analysis-fault-count">' + totalCount.toLocaleString() + '건</span><span class="analysis-fault-percentage">(전월 ' + fault.lastMonth + ' / 당월 ' + fault.thisMonth + ')</span></div>';
+                                });
+                                analysisHtml += '</div>';
+                            }
+                            analysisHtml += '</div>';
+                        });
+                        analysisHtml += '</div>';
+                    }
+                    
+                    analysisHtml += '</div></div>';
+                }
+                
+                container.innerHTML = '<div class="chart-container"><h3 class="chart-title">일자별 접수건 현황' + filterDesc + '</h3><p class="chart-description">전월(' + months.last + ')과 당월(' + months.current + ')의 일별 접수 추이를 비교합니다 (현재 필터 적용)</p><div class="chart-wrapper"><canvas id="chart1"></canvas></div>' + analysisHtml + '</div>';
+                var dailyData = data.daily_chart_data;
+                var ctx = document.getElementById('chart1').getContext('2d');
+                this.charts.push(new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dailyData.map(function(d) { return d.day; }),
+                        datasets: [{label: '전월 (' + months.last + ')', data: dailyData.map(function(d) { return d.lastMonth; }), borderColor: '#A5B4FC', backgroundColor: 'rgba(165, 180, 252, 0.2)', borderWidth: 3, tension: 0.3, fill: true}, {label: '당월 (' + months.current + ')', data: dailyData.map(function(d) { return d.thisMonth; }), borderColor: '#FCD34D', backgroundColor: 'rgba(252, 211, 77, 0.2)', borderWidth: 3, tension: 0.3, fill: true}]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: {legend: {position: 'top', labels: {font: {size: 13, weight: '600'}, padding: 15}}, tooltip: {callbacks: {label: function(context) {return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + '건';}}}},
+                        scales: {y: {beginAtZero: true, ticks: {callback: function(value) {return value.toLocaleString() + '건';}}}}
+                    }
+                }));
+            } else if (this.currentTab === "제품별") {
+                var products = data.products || {};
+                var sorted = [];
+                for (var name in products) {
+                    var counts = products[name];
+                    sorted.push({name: name, lastMonth: counts.lastMonth, thisMonth: counts.thisMonth, total: counts.lastMonth + counts.thisMonth});
+                }
+                sorted.sort(function(a, b) { return b.total - a.total; });
+                var top10 = sorted.slice(0, 10);
+                var others = sorted.slice(10);
+                var othersSum = {lastMonth: 0, thisMonth: 0};
+                others.forEach(function(item) {othersSum.lastMonth += item.lastMonth; othersSum.thisMonth += item.thisMonth;});
+                var chartData = top10.slice();
+                if (othersSum.lastMonth > 0 || othersSum.thisMonth > 0) {chartData.push({name: '기타 제품군', lastMonth: othersSum.lastMonth, thisMonth: othersSum.thisMonth});}
+                container.innerHTML = '<div class="chart-container"><h3 class="chart-title">제품별 접수 현황</h3><p class="chart-description">상위 10개 제품 + 기타 제품군 (총 ' + sorted.length + '개 제품)</p><div class="chart-wrapper"><canvas id="chart1"></canvas></div></div>';
+                var ctx = document.getElementById('chart1').getContext('2d');
+                this.charts.push(new Chart(ctx, {
+                    type: 'bar',
+                    data: {labels: chartData.map(function(d) { return d.name; }), datasets: [{label: '전월', data: chartData.map(function(d) { return d.lastMonth; }), backgroundColor: '#A5B4FC', borderRadius: 8}, {label: '당월', data: chartData.map(function(d) { return d.thisMonth; }), backgroundColor: '#FCD34D', borderRadius: 8}]},
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'top', labels: {font: {size: 13, weight: '600'}}}}, scales: {y: {beginAtZero: true, ticks: {callback: function(value) {return value.toLocaleString() + '건';}}}, x: {ticks: {maxRotation: 45, minRotation: 45}}}}
+                }));
+            } else if (this.currentTab === "서비스별") {
+                var services = data.services || {};
+                var chartData = [];
+                for (var name in services) {
+                    var counts = services[name];
+                    chartData.push({name: name, lastMonth: counts.lastMonth, thisMonth: counts.thisMonth});
+                }
+                container.innerHTML = '<div class="chart-container"><h3 class="chart-title">서비스별 접수 현황</h3><p class="chart-description">전체 서비스 구분별 접수 현황</p><div class="chart-wrapper"><canvas id="chart1"></canvas></div></div>';
+                var ctx = document.getElementById('chart1').getContext('2d');
+                this.charts.push(new Chart(ctx, {
+                    type: 'bar',
+                    data: {labels: chartData.map(function(d) { return d.name; }), datasets: [{label: '전월', data: chartData.map(function(d) { return d.lastMonth; }), backgroundColor: '#A5B4FC', borderRadius: 8}, {label: '당월', data: chartData.map(function(d) { return d.thisMonth; }), backgroundColor: '#FCD34D', borderRadius: 8}]},
+                    options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'top', labels: {font: {size: 13, weight: '600'}}}}, scales: {y: {beginAtZero: true, ticks: {callback: function(value) {return value.toLocaleString() + '건';}}}}}
+                }));
+            } else if (this.currentTab === "센터별") {
+                var locationsDetail = data.locations_detail || {};
+                var locationToCenter = DASHBOARD_DATA.location_to_center || {};
+                var installLocations = [], storeLocations = [];
+                for (var name in locationsDetail) {
+                    var stats = locationsDetail[name];
+                    var centerType = locationToCenter[name];
+                    var item = {name: name, lastMonth: stats.lastMonth, thisMonth: stats.thisMonth, total: stats.lastMonth + stats.thisMonth};
+                    if (centerType === "설치법인") {installLocations.push(item);} else if (centerType === "스토어") {storeLocations.push(item);}
+                }
+                installLocations.sort(function(a, b) { return b.total - a.total; });
+                storeLocations.sort(function(a, b) { return b.total - a.total; });
+                var top5Install = installLocations.slice(0, 5);
+                var top5Store = storeLocations.slice(0, 5);
+                container.innerHTML = '<div class="charts-row"><div class="chart-small"><h3 class="chart-title">설치법인 상위 5개</h3><p class="chart-description">총 ' + installLocations.length + '개 설치법인 중 상위 5개</p><div class="chart-wrapper"><canvas id="chart1"></canvas></div></div><div class="chart-small"><h3 class="chart-title">스토어 상위 5개</h3><p class="chart-description">총 ' + storeLocations.length + '개 스토어 중 상위 5개</p><div class="chart-wrapper"><canvas id="chart2"></canvas></div></div></div>';
+                var ctx1 = document.getElementById('chart1').getContext('2d');
+                this.charts.push(new Chart(ctx1, {type: 'bar', data: {labels: top5Install.map(function(d) { return d.name; }), datasets: [{label: '전월', data: top5Install.map(function(d) { return d.lastMonth; }), backgroundColor: '#A5B4FC', borderRadius: 8}, {label: '당월', data: top5Install.map(function(d) { return d.thisMonth; }), backgroundColor: '#FCD34D', borderRadius: 8}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'top', labels: {font: {size: 12, weight: '600'}}}}, scales: {y: {beginAtZero: true, ticks: {callback: function(v) {return v.toLocaleString() + '건';}}}, x: {ticks: {maxRotation: 45, minRotation: 45}}}}}));
+                var ctx2 = document.getElementById('chart2').getContext('2d');
+                this.charts.push(new Chart(ctx2, {type: 'bar', data: {labels: top5Store.map(function(d) { return d.name; }), datasets: [{label: '전월', data: top5Store.map(function(d) { return d.lastMonth; }), backgroundColor: '#A5B4FC', borderRadius: 8}, {label: '당월', data: top5Store.map(function(d) { return d.thisMonth; }), backgroundColor: '#FCD34D', borderRadius: 8}]}, options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {position: 'top', labels: {font: {size: 12, weight: '600'}}}}, scales: {y: {beginAtZero: true, ticks: {callback: function(v) {return v.toLocaleString() + '건';}}}, x: {ticks: {maxRotation: 45, minRotation: 45}}}}}));
+            }
+        },
+        
+        render: function() {
+            this.renderStats();
+            this.renderCharts();
+            this.renderDetailCards();
+            
+            // 분석 항목 클릭 이벤트
+            setTimeout(function() {
+                var analysisItems = document.querySelectorAll('.analysis-item');
+                analysisItems.forEach(function(item) {
+                    item.addEventListener('click', function() {
+                        var itemId = this.getAttribute('data-item-id');
+                        var detailsDiv = document.getElementById(itemId);
+                        if (detailsDiv) {
+                            document.querySelectorAll('.analysis-item-details').forEach(function(div) {
+                                if (div.id !== itemId) div.classList.remove('show');
+                            });
+                            analysisItems.forEach(function(otherItem) {
+                                if (otherItem !== item) otherItem.classList.remove('active');
+                            });
+                            detailsDiv.classList.toggle('show');
+                            item.classList.toggle('active');
+                        }
+                    });
+                });
+            }, 100);
+        }
+    };
+    
+    // ====================================================================
+    // 컨버터 데이터 브릿지 - data_service.js 자동 감지 및 변환
+    // ====================================================================
+    if (typeof SERVICE_DATA !== 'undefined' && Array.isArray(SERVICE_DATA) && SERVICE_DATA.length > 0) {
+        (function() {
+            var _raw = SERVICE_DATA;
+            console.log('[컨버터 브릿지] SERVICE_DATA 감지: ' + _raw.length.toLocaleString() + '건');
+            
+            // 접수일자 기준 월 감지
+            var mCounts = {};
+            _raw.forEach(function(r) {
+                var m = r.접수일자 ? r.접수일자.substring(0, 7) : '';
+                if (m && m.length === 7) mCounts[m] = (mCounts[m] || 0) + 1;
+            });
+            var mKeys = Object.keys(mCounts).sort();
+            var mLast = mKeys.length >= 2 ? mKeys[mKeys.length - 2] : (mKeys[0] || '');
+            var mThis = mKeys.length >= 1 ? mKeys[mKeys.length - 1] : '';
+            console.log('[컨버터 브릿지] 기간: ' + mLast + ' vs ' + mThis + ' (' + mKeys.length + '개월 감지)');
+            
+            // 필터 옵션 수집
+            var cTypes = {}, cNames = {}, locMap = {};
+            _raw.forEach(function(r) {
+                if (r.센터구분) cTypes[r.센터구분] = 1;
+                var name = r.이관처명 || '';
+                if (name) {
+                    cNames[name] = 1;
+                    locMap[name] = r.센터구분 || '기타';
+                }
+            });
+            
+            // 통계 계산 헬퍼
+            function computeStats(subset) {
+                var mStats = {};
+                mStats[mLast] = { 접수건수: 0, 당월처리건수: 0, 당월처리율: 0, 일평균접수건: 0 };
+                mStats[mThis] = { 접수건수: 0, 당월처리건수: 0, 당월처리율: 0, 일평균접수건: 0 };
+                var dL = {}, dT = {};
+                var pL = {}, pT = {};
+                var sL = {}, sT = {};
+                var lL = {}, lT = {};
+                
+                subset.forEach(function(r) {
+                    var m = r.접수일자 ? r.접수일자.substring(0, 7) : '';
+                    var day = r.접수일자 ? parseInt(r.접수일자.substring(8)) : 0;
+                    var pm = r.처리일자 ? r.처리일자.substring(0, 7) : '';
+                    var prod = r.제품군 || '미분류';
+                    var svc = r.접수구분 || '미분류';
+                    var loc = r.이관처명 || r.이관처 || '미분류';
+                    
+                    if (m === mLast) {
+                        mStats[mLast].접수건수++;
+                        if (pm === mLast) mStats[mLast].당월처리건수++;
+                        if (day) dL[day] = (dL[day] || 0) + 1;
+                        pL[prod] = (pL[prod] || 0) + 1;
+                        sL[svc] = (sL[svc] || 0) + 1;
+                        lL[loc] = (lL[loc] || 0) + 1;
+                    } else if (m === mThis) {
+                        mStats[mThis].접수건수++;
+                        if (pm === mThis) mStats[mThis].당월처리건수++;
+                        if (day) dT[day] = (dT[day] || 0) + 1;
+                        pT[prod] = (pT[prod] || 0) + 1;
+                        sT[svc] = (sT[svc] || 0) + 1;
+                        lT[loc] = (lT[loc] || 0) + 1;
+                    }
+                });
+                
+                var daysL = Object.keys(dL).length || 1;
+                var daysT = Object.keys(dT).length || 1;
+                mStats[mLast].일평균접수건 = mStats[mLast].접수건수 / daysL;
+                mStats[mLast].당월처리율 = mStats[mLast].접수건수 > 0 ? (mStats[mLast].당월처리건수 / mStats[mLast].접수건수 * 100) : 0;
+                mStats[mThis].일평균접수건 = mStats[mThis].접수건수 / daysT;
+                mStats[mThis].당월처리율 = mStats[mThis].접수건수 > 0 ? (mStats[mThis].당월처리건수 / mStats[mThis].접수건수 * 100) : 0;
+                
+                var daily = [];
+                for (var d = 1; d <= 31; d++) daily.push({ day: d, lastMonth: dL[d] || 0, thisMonth: dT[d] || 0 });
+                
+                var allP = {};
+                for (var k in pL) allP[k] = 1; for (var k in pT) allP[k] = 1;
+                var products = {};
+                for (var p in allP) products[p] = { lastMonth: pL[p] || 0, thisMonth: pT[p] || 0 };
+                
+                var allS = {};
+                for (var k in sL) allS[k] = 1; for (var k in sT) allS[k] = 1;
+                var services = {};
+                for (var s in allS) services[s] = { lastMonth: sL[s] || 0, thisMonth: sT[s] || 0 };
+                
+                var allL = {};
+                for (var k in lL) allL[k] = 1; for (var k in lT) allL[k] = 1;
+                var locations_detail = {};
+                for (var l in allL) locations_detail[l] = { lastMonth: lL[l] || 0, thisMonth: lT[l] || 0 };
+                
+                // 증감 분석
+                var sorted = [];
+                for (var pp in products) {
+                    var ch = products[pp].thisMonth - products[pp].lastMonth;
+                    var cr = products[pp].lastMonth > 0 ? (ch / products[pp].lastMonth * 100) : (products[pp].thisMonth > 0 ? 100 : 0);
+                    sorted.push({ name: pp, lastMonth: products[pp].lastMonth, thisMonth: products[pp].thisMonth, change: ch, changeRate: cr, faults: [] });
+                }
+                var inc = sorted.filter(function(x) { return x.change > 0; }).sort(function(a, b) { return Math.abs(b.change) - Math.abs(a.change); }).slice(0, 5);
+                var dec = sorted.filter(function(x) { return x.change < 0; }).sort(function(a, b) { return Math.abs(b.change) - Math.abs(a.change); }).slice(0, 5);
+                
+                return {
+                    monthly_stats: mStats,
+                    daily_chart_data: daily,
+                    products: products,
+                    services: services,
+                    locations_detail: locations_detail,
+                    analysis: { increase: inc, decrease: dec }
+                };
+            }
+            
+            // DataLoader 오버라이드
+            DataLoader.isLocal = false;
+            DataLoader._converterMode = true;
+            
+            DataLoader.loadManifest = async function() {
+                this.manifest = {
+                    periods: [{
+                        id: 'converter-data',
+                        label: mLast.replace('-', '년 ') + '월 vs ' + mThis.replace('-', '년 ') + '월',
+                        generated: new Date().toISOString().substring(0, 10)
+                    }]
+                };
+                return this.manifest;
+            };
+            
+            DataLoader.loadPeriod = async function() {
+                var defaultData = computeStats(_raw);
+                return {
+                    filter_options: {
+                        "센터구분": Object.keys(cTypes).sort(),
+                        "센터구분2": Object.keys(cNames).sort()
+                    },
+                    location_to_center: locMap,
+                    aggregated_data: { "전체|전체|전체": defaultData }
+                };
+            };
+            
+            // getCurrentData 오버라이드 - 필터 변경 시 동적 계산
+            var _origGetCurrentData = app.getCurrentData;
+            app.getCurrentData = function() {
+                if (!DASHBOARD_DATA) return null;
+                var key = this.filters["센터구분"] + "|" + this.filters["센터구분2"] + "|" + this.filters["유무상처리"];
+                if (DASHBOARD_DATA.aggregated_data[key]) return DASHBOARD_DATA.aggregated_data[key];
+                
+                // 동적 계산
+                var f1 = this.filters["센터구분"];
+                var f2 = this.filters["센터구분2"];
+                var f3 = this.filters["유무상처리"];
+                var filtered = _raw.filter(function(r) {
+                    if (f1 !== '전체' && r.센터구분 !== f1) return false;
+                    if (f2 !== '전체' && (r.이관처명 || '') !== f2) return false;
+                    if (f3 !== '전체') {
+                        var u = r.유무상처리 || '';
+                        if (f3 === '미처리') { if (u && u !== '미처리') return false; }
+                        else { if (u !== f3) return false; }
+                    }
+                    return true;
+                });
+                var result = computeStats(filtered);
+                DASHBOARD_DATA.aggregated_data[key] = result;
+                return result;
+            };
+            
+            console.log('[컨버터 브릿지] index.html 연동 준비 완료');
+        })();
+    }
+    
+    // ====================================================================
+    // 초기화 - manifest → 기간 선택 → 데이터 로드
+    // ====================================================================
+    window.addEventListener('load', async function() {
+        app.initTabs();
+        
+        // 1. manifest 로드 (file:// 모드면 localStorage 캐시 확인)
+        var manifest = await DataLoader.loadManifest();
+        
+        if (!manifest && DataLoader.isLocal) {
+            // localStorage에서 캐시된 manifest 복원 시도
+            try {
+                var cached = localStorage.getItem('__dash_manifest');
+                if (cached) {
+                    DataLoader.manifest = JSON.parse(cached);
+                    manifest = DataLoader.manifest;
+                    document.getElementById('fbManifestBtn').classList.add('loaded');
+                    document.getElementById('fbManifestBtn').textContent = '✅ 캐시 로드됨';
+                    document.getElementById('fbManifestStatus').textContent = manifest.periods.length + '개 기간 (캐시)';
+                    document.getElementById('fbDataRow').style.display = 'flex';
+                }
+            } catch(x) {}
+        }
+        
+        if (!manifest) return;
+        
+        // 2. 기간 선택 드롭다운 채우기
+        DataLoader.populatePeriodSelector();
+        
+        // 3. 최신 기간 자동 로드
+        var selector = document.getElementById('periodSelector');
+        if (selector.options.length > 0) {
+            // file:// 모드: localStorage 캐시에서 데이터 복원 시도
+            if (DataLoader.isLocal) {
+                var periodId = selector.value;
+                var cacheKey = periodId + '_' + DataLoader.dataType;
+                try {
+                    var cachedData = localStorage.getItem('__dash_' + cacheKey);
+                    if (cachedData) {
+                        DataLoader.cache[cacheKey] = JSON.parse(cachedData);
+                        document.getElementById('fbDataBtn').classList.add('loaded');
+                        document.getElementById('fbDataBtn').textContent = '✅ 캐시 로드됨';
+                        document.getElementById('fbDataStatus').textContent = '캐시된 데이터 사용 중';
+                    }
+                } catch(x) {}
+            }
+            await app.changePeriod(selector.value);
+        }
+        
+        // 4. 기간 변경 이벤트
+        selector.addEventListener('change', function() {
+            app.changePeriod(this.value);
+        });
+    });
+    </script>
+</body>
+</html>

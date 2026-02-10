@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대시보드 데이터 변환 도구</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+            background: #0F172A;
+            min-height: 100vh;
+            color: #E2E8F0;
+        }
+        
+        .app-header {
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border-bottom: 1px solid #334155;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .app-header h1 {
+            font-size: 22px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60A5FA, #A78BFA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .app-header .badge {
+            font-size: 11px;
+            background: #1E3A5F;
+            color: #60A5FA;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+        
+        /* 스텝 표시 */
+        .steps-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+        .step-item {
+            flex: 1;
+            padding: 14px 16px;
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #64748B;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        .step-item.active {
+            background: #1E3A5F;
+            border-color: #3B82F6;
+            color: #93C5FD;
+        }
+        .step-item.done {
+            background: #064E3B;
+            border-color: #059669;
+            color: #6EE7B7;
+        }
+        .step-num {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: #334155;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 13px;
+        }
+        .step-item.active .step-num { background: #3B82F6; color: white; }
+        .step-item.done .step-num { background: #059669; color: white; }
+        
+        /* 카드 */
+        .card {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .card h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #F1F5F9;
+            margin-bottom: 8px;
+        }
+        .card .desc {
+            font-size: 14px;
+            color: #94A3B8;
+            margin-bottom: 24px;
+        }
+        
+        /* 대시보드 타입 선택 */
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .type-card {
+            padding: 24px;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }
+        .type-card:hover { border-color: #60A5FA; background: #1E3A5F30; }
+        .type-card.selected { border-color: #3B82F6; background: #1E3A5F; }
+        .type-card .icon { font-size: 36px; margin-bottom: 12px; }
+        .type-card .name { font-size: 16px; font-weight: 700; color: #F1F5F9; margin-bottom: 4px; }
+        .type-card .sub { font-size: 12px; color: #94A3B8; }
+        
+        /* 파일 드롭존 */
+        .drop-zone {
+            border: 2px dashed #475569;
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #0F172A;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #3B82F6;
+            background: #1E3A5F20;
+        }
+        .drop-zone .icon { font-size: 48px; margin-bottom: 16px; }
+        .drop-zone .title { font-size: 18px; font-weight: 700; color: #CBD5E1; margin-bottom: 8px; }
+        .drop-zone .sub { font-size: 13px; color: #64748B; }
+        .drop-zone input { display: none; }
+        
+        .file-info {
+            display: none;
+            padding: 16px 20px;
+            background: #064E3B;
+            border: 1px solid #059669;
+            border-radius: 10px;
+            margin-top: 16px;
+            font-size: 14px;
+            color: #6EE7B7;
+            font-weight: 600;
+        }
+        .file-info.show { display: flex; align-items: center; gap: 12px; }
+        
+        /* 컬럼 매핑 */
+        .mapping-section { display: none; }
+        .mapping-section.show { display: block; }
+        
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .mapping-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: #0F172A;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+        .mapping-label {
+            min-width: 140px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94A3B8;
+        }
+        .mapping-label .required { color: #F87171; }
+        .mapping-row select {
+            flex: 1;
+            padding: 8px 12px;
+            background: #1E293B;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #E2E8F0;
+            font-size: 13px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+        .mapping-row select:focus { outline: none; border-color: #3B82F6; }
+        
+        /* 기간 입력 */
+        .period-input-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #0F172A;
+            border-radius: 10px;
+            border: 1px solid #334155;
+        }
+        .period-input-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94A3B8;
+            min-width: 80px;
+        }
+        .period-input-group input, .period-input-group select {
+            padding: 10px 14px;
+            background: #1E293B;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #E2E8F0;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .period-input-group input:focus { outline: none; border-color: #3B82F6; }
+        
+        /* 미리보기 */
+        .preview-box {
+            background: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px;
+            max-height: 400px;
+            overflow: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            color: #94A3B8;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .excel-preview {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        .excel-preview table {
+            border-collapse: collapse;
+            font-size: 12px;
+            width: 100%;
+        }
+        .excel-preview th {
+            background: #334155;
+            color: #93C5FD;
+            padding: 8px 12px;
+            font-weight: 600;
+            text-align: left;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+        }
+        .excel-preview td {
+            padding: 6px 12px;
+            border-bottom: 1px solid #1E293B;
+            color: #CBD5E1;
+            white-space: nowrap;
+        }
+        .excel-preview tr:hover td { background: #1E293B; }
+        
+        /* 버튼 */
+        .btn {
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #3B82F6, #6366F1);
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(59,130,246,0.3); }
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #10B981);
+            color: white;
+        }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(5,150,105,0.3); }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #475569;
+            color: #94A3B8;
+        }
+        .btn-outline:hover { border-color: #60A5FA; color: #60A5FA; }
+        
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        
+        /* 결과 */
+        .result-section { display: none; }
+        .result-section.show { display: block; }
+        
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .result-stat {
+            padding: 16px;
+            background: #0F172A;
+            border-radius: 10px;
+            border: 1px solid #334155;
+            text-align: center;
+        }
+        .result-stat .label { font-size: 12px; color: #64748B; margin-bottom: 4px; }
+        .result-stat .value { font-size: 24px; font-weight: 800; color: #60A5FA; }
+        
+        .download-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .download-card {
+            padding: 24px;
+            background: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 12px;
+        }
+        .download-card h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #F1F5F9;
+            margin-bottom: 8px;
+        }
+        .download-card p {
+            font-size: 12px;
+            color: #64748B;
+            margin-bottom: 16px;
+        }
+
+        /* 가이드 섹션 */
+        .guide-section {
+            margin-top: 32px;
+        }
+        .guide-box {
+            padding: 20px 24px;
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+        .guide-box h3 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #FBBF24;
+            margin-bottom: 12px;
+        }
+        .guide-box p, .guide-box li {
+            font-size: 13px;
+            color: #94A3B8;
+            line-height: 1.8;
+        }
+        .guide-box ol, .guide-box ul {
+            padding-left: 20px;
+        }
+        .guide-box code {
+            background: #0F172A;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #60A5FA;
+            font-family: 'Consolas', monospace;
+        }
+        .guide-box .file-path {
+            display: inline-block;
+            background: #064E3B;
+            color: #6EE7B7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .tab-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: #0F172A;
+            padding: 4px;
+            border-radius: 10px;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: #64748B;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #334155;
+            color: #F1F5F9;
+        }
+        .tab-btn:hover:not(.active) { color: #94A3B8; }
+        
+        @media (max-width: 768px) {
+            .type-grid { grid-template-columns: 1fr; }
+            .mapping-grid { grid-template-columns: 1fr; }
+            .download-cards { grid-template-columns: 1fr; }
+            .steps-bar { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-header">
+    <h1>🔧 대시보드 데이터 변환 도구</h1>
+    <span class="badge">v2.0 — 파이썬 불필요</span>
+</div>
+
+<div class="main-container">
+    <!-- 스텝 -->
+    <div class="steps-bar">
+        <div class="step-item active" id="step1Indicator">
+            <span class="step-num">1</span>
+            대시보드 유형 선택
+        </div>
+        <div class="step-item" id="step2Indicator">
+            <span class="step-num">2</span>
+            엑셀 파일 업로드
+        </div>
+        <div class="step-item" id="step3Indicator">
+            <span class="step-num">3</span>
+            컬럼 매핑 & 변환
+        </div>
+        <div class="step-item" id="step4Indicator">
+            <span class="step-num">4</span>
+            다운로드 & 적용
+        </div>
+    </div>
+
+    <!-- Step 1: 유형 선택 -->
+    <div class="card" id="step1Card">
+        <h2>어떤 대시보드에 사용할 데이터인가요?</h2>
+        <p class="desc">변환할 대시보드 유형을 선택하세요. 각 유형에 맞는 JSON 구조로 변환됩니다.</p>
+        <div class="type-grid">
+            <div class="type-card" data-type="reception" onclick="selectType('reception')">
+                <div class="icon">📊</div>
+                <div class="name">서비스 접수 비교 분석</div>
+                <div class="sub">index.html</div>
+            </div>
+            <div class="type-card" data-type="symptom" onclick="selectType('symptom')">
+                <div class="icon">🔍</div>
+                <div class="name">문의내용 증상 분석</div>
+                <div class="sub">symptom_analysis.html</div>
+            </div>
+            <div class="type-card" data-type="processing" onclick="selectType('processing')">
+                <div class="icon">📋</div>
+                <div class="name">처리건 분석</div>
+                <div class="sub">processing_dashboard.html</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: 파일 업로드 -->
+    <div class="card" id="step2Card" style="display:none;">
+        <h2>엑셀 파일을 업로드하세요</h2>
+        <p class="desc">xlsx, xls, csv 파일을 드래그하거나 클릭해서 선택하세요. 모든 처리는 브라우저에서만 이루어지며 서버로 전송되지 않습니다.</p>
+        
+        <div class="drop-zone" id="dropZone">
+            <div class="icon">📁</div>
+            <div class="title">파일을 여기에 드래그하세요</div>
+            <div class="sub">또는 클릭하여 파일 선택 (.xlsx, .xls, .csv)</div>
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+        </div>
+        
+        <div class="file-info" id="fileInfo">
+            <span>✅</span>
+            <span id="fileInfoText"></span>
+        </div>
+        
+        <div id="excelPreviewWrapper" style="display:none; margin-top: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="font-size: 15px; color: #F1F5F9;">📋 데이터 미리보기 (상위 10행)</h3>
+                <span style="font-size: 12px; color: #64748B;" id="sheetSelector"></span>
+            </div>
+            <div class="excel-preview" id="excelPreview" style="max-height: 300px; overflow: auto;"></div>
+        </div>
+    </div>
+
+    <!-- Step 3: 매핑 -->
+    <div class="card mapping-section" id="step3Card">
+        <h2>컬럼 매핑 설정</h2>
+        <p class="desc">엑셀의 컬럼을 대시보드 필드에 연결하세요. <span style="color:#F87171;">*</span> 표시는 필수 항목입니다.</p>
+        
+        <div class="period-input-group">
+            <label>📅 기간 ID:</label>
+            <input type="text" id="periodId" placeholder="예: 2026-01" style="width: 140px;">
+            <label>라벨:</label>
+            <input type="text" id="periodLabel" placeholder="예: 2026년 1월" style="width: 200px;">
+        </div>
+        
+        <div class="mapping-grid" id="mappingGrid"></div>
+        
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="convertData()" id="convertBtn">
+                🔄 변환 실행
+            </button>
+            <button class="btn btn-outline" onclick="resetAll()">↩️ 처음으로</button>
+        </div>
+    </div>
+
+    <!-- Step 4: 결과 -->
+    <div class="card result-section" id="step4Card">
+        <h2>✅ 변환 완료!</h2>
+        <p class="desc">아래 파일들을 다운로드하여 대시보드 폴더에 넣으세요.</p>
+        
+        <div class="result-stats" id="resultStats"></div>
+        
+        <div class="download-cards">
+            <div class="download-card">
+                <h3>📄 데이터 JSON</h3>
+                <p id="dataFileName">data/2026-01-xxx.json</p>
+                <button class="btn btn-success" onclick="downloadDataJson()">💾 다운로드</button>
+            </div>
+            <div class="download-card">
+                <h3>📋 manifest.json</h3>
+                <p>기존 manifest.json에 새 기간을 추가한 버전</p>
+                <button class="btn btn-success" onclick="downloadManifest()">💾 다운로드</button>
+            </div>
+        </div>
+        
+        <div style="margin-top: 24px;">
+            <div class="tab-row">
+                <button class="tab-btn active" onclick="showPreviewTab('data')">데이터 JSON 미리보기</button>
+                <button class="tab-btn" onclick="showPreviewTab('manifest')">manifest.json 미리보기</button>
+            </div>
+            <div class="preview-box" id="jsonPreview" style="max-height: 500px;"></div>
+        </div>
+        
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="resetAll()">🔄 다른 파일 변환</button>
+        </div>
+    </div>
+    
+    <!-- ===== 적용 가이드 ===== -->
+    <div class="guide-section">
+        <div class="card">
+            <h2>📖 데이터 적용 가이드</h2>
+            <p class="desc">변환된 JSON 파일을 대시보드에 적용하는 방법입니다.</p>
+            
+            <div class="guide-box">
+                <h3>📁 Step 1: 파일 배치</h3>
+                <p>다운로드 받은 파일을 아래 구조로 배치하세요:</p>
+<pre style="background:#0F172A; padding:16px; border-radius:8px; margin-top:12px; font-size:12px; color:#94A3B8; line-height:1.8;">
+📁 dashboard/
+├── index.html                    ← 서비스 접수 비교 분석
+├── symptom_analysis.html         ← 문의내용 증상 분석
+├── processing_dashboard.html     ← 처리건 분석
+├── converter.html                ← 이 변환 도구
+├── chart.umd.js                  ← Chart.js 라이브러리
+├── <span style="color:#FBBF24;">manifest.json</span>                 ← 📌 기간 목록 (다운로드 교체)
+└── 📁 data/
+    ├── <span style="color:#6EE7B7;">2026-01-reception.json</span>    ← 접수 데이터
+    ├── <span style="color:#6EE7B7;">2026-01-symptom.json</span>      ← 증상 데이터
+    ├── <span style="color:#6EE7B7;">2026-01-processing.json</span>   ← 처리 데이터
+    ├── 2026-02-reception.json    ← 매월 추가
+    └── ...
+</pre>
+            </div>
+            
+            <div class="guide-box">
+                <h3>📌 Step 2: manifest.json 교체</h3>
+                <p>다운로드 받은 <code>manifest.json</code>으로 기존 파일을 <strong>교체(덮어쓰기)</strong>하세요.</p>
+                <p style="margin-top:8px;">manifest.json은 모든 대시보드가 공유하는 기간 목록입니다. 변환할 때마다 자동으로 새 기간이 추가됩니다.</p>
+                <p style="margin-top:8px; color:#F87171;">⚠️ 기존 manifest.json이 있다면, 변환 전에 이 도구의 "manifest 불러오기" 기능으로 먼저 로드하세요.</p>
+            </div>
+            
+            <div class="guide-box">
+                <h3>🔄 Step 3: 데이터 JSON 복사</h3>
+                <p>다운로드 받은 데이터 JSON을 <code>data/</code> 폴더에 넣으세요.</p>
+                <ul style="margin-top:8px;">
+                    <li>접수 분석: <span class="file-path">data/2026-01-reception.json</span></li>
+                    <li>증상 분석: <span class="file-path">data/2026-01-symptom.json</span></li>
+                    <li>처리 분석: <span class="file-path">data/2026-01-processing.json</span></li>
+                </ul>
+            </div>
+            
+            <div class="guide-box">
+                <h3>✅ Step 4: 확인</h3>
+                <p>브라우저에서 HTML 파일을 열고 기간 선택 드롭다운에서 새 기간이 표시되는지 확인하세요.</p>
+                <p style="margin-top:8px;">GitHub Pages 배포 시: <code>git add . && git commit -m "2026-02 데이터 추가" && git push</code></p>
+            </div>
+            
+            <div class="guide-box">
+                <h3>💡 매월 업데이트 워크플로우</h3>
+                <ol>
+                    <li>이 도구(<code>converter.html</code>)를 브라우저에서 열기</li>
+                    <li>대시보드 유형 선택 (접수/증상/처리)</li>
+                    <li>새 달의 엑셀 파일 드래그 & 드롭</li>
+                    <li>컬럼 매핑 확인 → "변환 실행"</li>
+                    <li>데이터 JSON + manifest.json 다운로드</li>
+                    <li><code>data/</code> 폴더에 JSON 복사, manifest.json 교체</li>
+                    <li>3개 대시보드 유형에 대해 반복</li>
+                </ol>
+            </div>
+            
+            <div class="guide-box">
+                <h3>🔧 기존 HTML에서 데이터 추출하기 (최초 1회)</h3>
+                <p>이미 동작하는 기존 HTML이 있다면 브라우저 콘솔(F12)에서 데이터를 추출할 수 있습니다:</p>
+<pre style="background:#0F172A; padding:16px; border-radius:8px; margin-top:12px; font-size:12px; color:#94A3B8; line-height:2;">
+<span style="color:#FBBF24;">// index.html (접수 비교 분석)</span>
+copy(JSON.stringify(DASHBOARD_DATA))
+→ 붙여넣기 후 <span class="file-path">data/2026-01-reception.json</span>으로 저장
+
+<span style="color:#FBBF24;">// symptom_analysis.html (증상 분석)</span>
+copy(JSON.stringify({meta:{period:"2026-01",totalRecords:78036},products:Object.keys(data),data:data}))
+→ 붙여넣기 후 <span class="file-path">data/2026-01-symptom.json</span>으로 저장
+
+<span style="color:#FBBF24;">// processing_dashboard.html (처리건 분석)</span>
+<span style="color:#64748B;">// ※ 페이지 로딩 완료 후 실행 (rawData가 채워진 후)</span>
+copy(JSON.stringify({meta:{period:"2026-01"},rows:rawData}))
+→ 붙여넣기 후 <span class="file-path">data/2026-01-processing.json</span>으로 저장
+</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ====================================================================
+// 상태 관리
+// ====================================================================
+let selectedType = null;
+let workbook = null;
+let sheetData = [];
+let columns = [];
+let convertedData = null;
+let convertedManifest = null;
+
+// 현재 manifest (기존 것 불러오기 가능)
+let currentManifest = {
+    version: "2.0",
+    dashboard_types: {
+        reception: "서비스 접수 비교 분석",
+        symptom: "문의내용 증상 분석",
+        processing: "처리건 분석"
+    },
+    periods: []
+};
+
+// 각 대시보드 유형별 필요 컬럼
+const COLUMN_DEFS = {
+    reception: [
+        { id: 'date', label: '접수일자', required: true, hint: '날짜 컬럼' },
+        { id: 'centerType1', label: '센터구분', required: true, hint: '설치법인/스토어 등' },
+        { id: 'centerType2', label: '센터구분2', required: false, hint: '세부 센터 유형' },
+        { id: 'centerName', label: '센터명', required: true, hint: '센터 이름' },
+        { id: 'payment', label: '유무상처리', required: false, hint: 'Y/N/미처리' },
+        { id: 'product', label: '제품명', required: true, hint: '제품 이름' },
+        { id: 'service', label: '서비스구분', required: false, hint: '서비스 유형' },
+        { id: 'fault', label: '고장내용소분류', required: false, hint: '고장 상세 분류' },
+    ],
+    symptom: [
+        { id: 'product', label: '제품명', required: true, hint: '제품 이름' },
+        { id: 'symptom', label: '증상/문의내용', required: true, hint: '증상 텍스트' },
+    ],
+    processing: [
+        { id: 'product', label: '제품명', required: true, hint: '' },
+        { id: 'centerType1', label: '센터구분', required: false, hint: '' },
+        { id: 'centerType2', label: '센터구분2', required: false, hint: '' },
+        { id: 'repair', label: '수리', required: false, hint: '수리유형' },
+        { id: 'processType', label: '처리구분', required: false, hint: '' },
+        { id: 'payment', label: '유무상구분', required: false, hint: 'Y/N' },
+        { id: 'processMonth', label: '처리월', required: false, hint: '2026-01 형태' },
+        { id: 'center', label: '이관처', required: false, hint: '센터명' },
+        { id: 'count', label: '건수', required: false, hint: '숫자 (없으면 1건씩 카운트)' },
+    ]
+};
+
+// 자동 매핑 힌트
+const AUTO_MAP_HINTS = {
+    'date': ['접수일자', '접수일', '일자', '날짜', 'date'],
+    'centerType1': ['센터구분', '센터유형'],
+    'centerType2': ['센터구분2', '센터유형상세', '센터유형2'],
+    'centerName': ['센터명', '센터이름', '이관처'],
+    'payment': ['유무상처리', '유무상구분', '유무상'],
+    'product': ['제품명', '제품', '품명', '제품군'],
+    'service': ['서비스구분', '서비스유형', '서비스'],
+    'fault': ['고장내용소분류', '고장내용', '고장분류', '불량내용'],
+    'symptom': ['증상', '문의내용', '고장증상', '접수내용', '내용'],
+    'repair': ['수리', '수리유형', '수리구분'],
+    'processType': ['처리구분', '처리유형'],
+    'processMonth': ['처리월', '처리년월'],
+    'center': ['이관처', '처리센터', '센터명'],
+    'count': ['건수', '수량', 'count'],
+};
+
+// ====================================================================
+// Step 1: 유형 선택
+// ====================================================================
+function selectType(type) {
+    selectedType = type;
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.type-card[data-type="${type}"]`).classList.add('selected');
+    
+    updateStep(1, 'done');
+    updateStep(2, 'active');
+    document.getElementById('step2Card').style.display = 'block';
+    document.getElementById('step2Card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ====================================================================
+// Step 2: 파일 업로드
+// ====================================================================
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            
+            if (sheetData.length === 0) {
+                alert('데이터가 없습니다!');
+                return;
+            }
+            
+            columns = Object.keys(sheetData[0]);
+            
+            // 파일 정보 표시
+            const info = document.getElementById('fileInfo');
+            document.getElementById('fileInfoText').textContent = 
+                `${file.name} — ${sheetData.length.toLocaleString()}행 × ${columns.length}열 (시트: ${sheetName})`;
+            info.classList.add('show');
+            
+            // 시트 선택기 (여러 시트인 경우)
+            if (workbook.SheetNames.length > 1) {
+                let html = '<select onchange="changeSheet(this.value)" style="background:#1E293B;border:1px solid #475569;border-radius:6px;padding:4px 8px;color:#E2E8F0;font-size:12px;">';
+                workbook.SheetNames.forEach(name => {
+                    html += `<option value="${name}">${name}</option>`;
+                });
+                html += '</select>';
+                document.getElementById('sheetSelector').innerHTML = '시트: ' + html;
+            }
+            
+            // 미리보기
+            showExcelPreview();
+            
+            // 매핑 단계로
+            showMappingStep();
+            
+        } catch (err) {
+            alert('파일 읽기 실패: ' + err.message);
+            console.error(err);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function changeSheet(sheetName) {
+    const worksheet = workbook.Sheets[sheetName];
+    sheetData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    columns = sheetData.length > 0 ? Object.keys(sheetData[0]) : [];
+    showExcelPreview();
+    buildMappingUI();
+}
+
+function showExcelPreview() {
+    const wrapper = document.getElementById('excelPreviewWrapper');
+    const container = document.getElementById('excelPreview');
+    wrapper.style.display = 'block';
+    
+    let html = '<table><thead><tr>';
+    columns.forEach(col => { html += `<th>${col}</th>`; });
+    html += '</tr></thead><tbody>';
+    
+    const previewRows = sheetData.slice(0, 10);
+    previewRows.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+            let val = row[col];
+            if (val instanceof Date) val = val.toLocaleDateString('ko-KR');
+            else if (val === null || val === undefined) val = '';
+            html += `<td>${String(val).substring(0, 50)}</td>`;
+        });
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// ====================================================================
+// Step 3: 매핑
+// ====================================================================
+function showMappingStep() {
+    updateStep(2, 'done');
+    updateStep(3, 'active');
+    
+    const card = document.getElementById('step3Card');
+    card.classList.add('show');
+    
+    // 기간 자동추정
+    autoDetectPeriod();
+    buildMappingUI();
+    
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function autoDetectPeriod() {
+    // 날짜 컬럼에서 기간 추정
+    const dateCol = columns.find(c => AUTO_MAP_HINTS.date.some(h => c.includes(h)));
+    if (dateCol && sheetData.length > 0) {
+        const sample = sheetData[Math.floor(sheetData.length / 2)][dateCol];
+        if (sample instanceof Date) {
+            const y = sample.getFullYear();
+            const m = String(sample.getMonth() + 1).padStart(2, '0');
+            document.getElementById('periodId').value = `${y}-${m}`;
+            document.getElementById('periodLabel').value = `${y}년 ${parseInt(m)}월`;
+            return;
+        }
+    }
+    // 처리월 컬럼에서 추정
+    const monthCol = columns.find(c => c.includes('처리월') || c.includes('년월'));
+    if (monthCol && sheetData.length > 0) {
+        const vals = [...new Set(sheetData.map(r => r[monthCol]).filter(v => v))].sort();
+        if (vals.length > 0) {
+            const latest = vals[vals.length - 1];
+            document.getElementById('periodId').value = latest;
+            document.getElementById('periodLabel').value = latest.replace('-', '년 ').replace(/(\d+)$/, '$1월');
+        }
+    }
+}
+
+function buildMappingUI() {
+    const grid = document.getElementById('mappingGrid');
+    const defs = COLUMN_DEFS[selectedType] || [];
+    
+    grid.innerHTML = defs.map(def => {
+        // 자동 매칭
+        const hints = AUTO_MAP_HINTS[def.id] || [];
+        const autoMatch = columns.find(col => hints.some(h => col.toLowerCase().includes(h.toLowerCase())));
+        
+        let options = `<option value="">— 선택 안함 —</option>`;
+        columns.forEach(col => {
+            const selected = (col === autoMatch) ? 'selected' : '';
+            options += `<option value="${col}" ${selected}>${col}</option>`;
+        });
+        
+        return `
+            <div class="mapping-row">
+                <div class="mapping-label">
+                    ${def.required ? '<span class="required">*</span> ' : ''}${def.label}
+                    ${def.hint ? `<br><span style="font-size:11px;color:#475569;">${def.hint}</span>` : ''}
+                </div>
+                <select id="map_${def.id}">${options}</select>
+            </div>
+        `;
+    }).join('');
+}
+
+// ====================================================================
+// 변환 로직
+// ====================================================================
+function convertData() {
+    const periodId = document.getElementById('periodId').value.trim();
+    const periodLabel = document.getElementById('periodLabel').value.trim();
+    
+    if (!periodId) { alert('기간 ID를 입력하세요 (예: 2026-01)'); return; }
+    
+    // 매핑 읽기
+    const mapping = {};
+    const defs = COLUMN_DEFS[selectedType] || [];
+    for (const def of defs) {
+        const select = document.getElementById('map_' + def.id);
+        if (select) mapping[def.id] = select.value;
+        if (def.required && !mapping[def.id]) {
+            alert(`필수 항목 "${def.label}"의 컬럼을 선택하세요.`);
+            return;
+        }
+    }
+    
+    try {
+        if (selectedType === 'reception') {
+            convertedData = convertReception(sheetData, mapping, periodId);
+        } else if (selectedType === 'symptom') {
+            convertedData = convertSymptom(sheetData, mapping, periodId);
+        } else if (selectedType === 'processing') {
+            convertedData = convertProcessing(sheetData, mapping, periodId);
+        }
+        
+        // manifest 업데이트
+        const fileName = `data/${periodId}-${selectedType}.json`;
+        updateManifest(periodId, periodLabel, selectedType, fileName);
+        
+        showResult(periodId);
+        
+    } catch (err) {
+        alert('변환 오류: ' + err.message);
+        console.error(err);
+    }
+}
+
+// --- 접수 비교 분석 ---
+function convertReception(rows, map, periodId) {
+    // 날짜 파싱
+    const parsed = rows.map(row => {
+        let d = row[map.date];
+        if (!(d instanceof Date)) d = new Date(d);
+        const ym = isNaN(d) ? null : d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+        return { ...row, _ym: ym, _day: d instanceof Date && !isNaN(d) ? d.getDate() : null };
+    }).filter(r => r._ym);
+    
+    // 월 목록
+    const months = [...new Set(parsed.map(r => r._ym))].sort();
+    if (months.length < 2) throw new Error('최소 2개월 데이터가 필요합니다');
+    const lastMonth = months[months.length - 2];
+    const thisMonth = months[months.length - 1];
+    const filtered = parsed.filter(r => r._ym === lastMonth || r._ym === thisMonth);
+    
+    // 필터 옵션
+    const filterOpts1 = map.centerType1 ? [...new Set(filtered.map(r => r[map.centerType1]).filter(Boolean))].sort() : [];
+    const filterOpts2 = map.centerType2 ? [...new Set(filtered.map(r => r[map.centerType2]).filter(Boolean))].sort() : [];
+    
+    // 센터명 → 구분 매핑
+    const locToCenter = {};
+    if (map.centerName && map.centerType1) {
+        filtered.forEach(r => {
+            if (r[map.centerName] && r[map.centerType1]) locToCenter[r[map.centerName]] = r[map.centerType1];
+        });
+    }
+    
+    // 필터 조합 생성
+    const combos = [['전체','전체','전체']];
+    const f1List = ['전체', ...filterOpts1];
+    const f2List = ['전체', ...filterOpts2];
+    const f3List = ['전체', 'Y', 'N', '미처리'];
+    for (const f1 of f1List) for (const f2 of f2List) for (const f3 of f3List) {
+        const key = `${f1}|${f2}|${f3}`;
+        if (!combos.find(c => c.join('|') === key)) combos.push([f1,f2,f3]);
+    }
+    
+    const aggregated = {};
+    for (const [f1,f2,f3] of combos) {
+        let subset = filtered;
+        if (f1 !== '전체' && map.centerType1) subset = subset.filter(r => r[map.centerType1] === f1);
+        if (f2 !== '전체' && map.centerType2) subset = subset.filter(r => r[map.centerType2] === f2);
+        if (f3 !== '전체' && map.payment) subset = subset.filter(r => r[map.payment] === f3);
+        if (subset.length === 0) continue;
+        
+        const key = `${f1}|${f2}|${f3}`;
+        
+        // 월별 통계
+        const ms = {};
+        [lastMonth, thisMonth].forEach(m => {
+            const md = subset.filter(r => r._ym === m);
+            const days = new Set(md.map(r => r._day)).size || 1;
+            ms[m] = { 접수건수: md.length, 당월처리율: 0, 일평균접수건: +(md.length/days).toFixed(1) };
+        });
+        
+        // 일자별
+        const daily = [];
+        for (let d = 1; d <= 31; d++) {
+            const lc = subset.filter(r => r._ym === lastMonth && r._day === d).length;
+            const tc = subset.filter(r => r._ym === thisMonth && r._day === d).length;
+            if (lc || tc) daily.push({ day: d+'일', lastMonth: lc, thisMonth: tc });
+        }
+        
+        // 제품별
+        const products = {};
+        if (map.product) {
+            subset.forEach(r => {
+                const p = r[map.product];
+                if (!p) return;
+                if (!products[p]) products[p] = {lastMonth:0, thisMonth:0};
+                products[p][r._ym === lastMonth ? 'lastMonth' : 'thisMonth']++;
+            });
+        }
+        
+        // 서비스별
+        const services = {};
+        if (map.service) {
+            subset.forEach(r => {
+                const s = r[map.service];
+                if (!s) return;
+                if (!services[s]) services[s] = {lastMonth:0, thisMonth:0};
+                services[s][r._ym === lastMonth ? 'lastMonth' : 'thisMonth']++;
+            });
+        }
+        
+        // 센터별 상세
+        const locDetail = {};
+        if (map.centerName) {
+            subset.forEach(r => {
+                const c = r[map.centerName];
+                if (!c) return;
+                if (!locDetail[c]) locDetail[c] = {lastMonth:0, thisMonth:0, faults:[]};
+                locDetail[c][r._ym === lastMonth ? 'lastMonth' : 'thisMonth']++;
+            });
+            // 고장내용
+            if (map.fault) {
+                Object.keys(locDetail).forEach(center => {
+                    const cd = subset.filter(r => r[map.centerName] === center);
+                    const faultMap = {};
+                    cd.forEach(r => {
+                        const f = r[map.fault]; if (!f) return;
+                        if (!faultMap[f]) faultMap[f] = {lastMonth:0,thisMonth:0};
+                        faultMap[f][r._ym === lastMonth ? 'lastMonth':'thisMonth']++;
+                    });
+                    locDetail[center].faults = Object.entries(faultMap)
+                        .sort((a,b) => (b[1].lastMonth+b[1].thisMonth) - (a[1].lastMonth+a[1].thisMonth))
+                        .slice(0,5)
+                        .map(([name,v]) => ({name, lastMonth:v.lastMonth, thisMonth:v.thisMonth}));
+                });
+            }
+        }
+        
+        // 분석
+        const analysis = { increase: [], decrease: [] };
+        Object.entries(products).forEach(([name, c]) => {
+            const change = c.thisMonth - c.lastMonth;
+            const rate = c.lastMonth > 0 ? +((change/c.lastMonth)*100).toFixed(1) : (c.thisMonth > 0 ? 100 : 0);
+            const item = {name, lastMonth:c.lastMonth, thisMonth:c.thisMonth, change, changeRate:rate, faults:[]};
+            if (change > 0) analysis.increase.push(item);
+            else if (change < 0) analysis.decrease.push(item);
+        });
+        analysis.increase.sort((a,b) => b.change - a.change);
+        analysis.increase = analysis.increase.slice(0,5);
+        analysis.decrease.sort((a,b) => a.change - b.change);
+        analysis.decrease = analysis.decrease.slice(0,5);
+        
+        aggregated[key] = { monthly_stats: ms, daily_chart_data: daily, products, services, locations_detail: locDetail, analysis };
+    }
+    
+    return {
+        meta: { period: periodId, lastMonth, thisMonth, generated: new Date().toISOString(), totalRows: filtered.length },
+        filter_options: { '센터구분': filterOpts1, '센터구분2': filterOpts2 },
+        location_to_center: locToCenter,
+        aggregated_data: aggregated
+    };
+}
+
+// --- 증상 분석 ---
+function convertSymptom(rows, map, periodId) {
+    const productMap = {};
+    
+    rows.forEach(row => {
+        const product = row[map.product];
+        const symptom = row[map.symptom];
+        if (!product || !symptom) return;
+        const sym = String(symptom).trim();
+        if (!sym) return;
+        
+        if (!productMap[product]) productMap[product] = { total: 0, symptoms: {} };
+        productMap[product].total++;
+        productMap[product].symptoms[sym] = (productMap[product].symptoms[sym] || 0) + 1;
+    });
+    
+    const products = Object.keys(productMap).sort((a,b) => productMap[b].total - productMap[a].total).slice(0, 10);
+    
+    const data = {};
+    products.forEach(p => {
+        const pm = productMap[p];
+        const sortedSymptoms = Object.entries(pm.symptoms)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 30)
+            .map(([symptom, count]) => ({
+                symptom,
+                count,
+                percentage: +((count / pm.total) * 100).toFixed(2)
+            }));
+        
+        data[p] = { total_count: pm.total, symptoms: sortedSymptoms };
+    });
+    
+    return {
+        meta: { period: periodId, totalRecords: rows.length, generated: new Date().toISOString() },
+        products,
+        data
+    };
+}
+
+// --- 처리건 분석 ---
+function convertProcessing(rows, map, periodId) {
+    const outputRows = rows.map(row => {
+        const out = {};
+        if (map.product) out['제품명'] = row[map.product] || null;
+        if (map.centerType1) out['센터구분'] = row[map.centerType1] || null;
+        if (map.centerType2) out['센터구분2'] = row[map.centerType2] || null;
+        if (map.repair) out['수리'] = row[map.repair] || null;
+        if (map.processType) out['처리구분'] = row[map.processType] || null;
+        if (map.payment) out['유무상구분'] = row[map.payment] || null;
+        if (map.processMonth) {
+            let pm = row[map.processMonth];
+            if (pm instanceof Date) pm = pm.getFullYear()+'-'+String(pm.getMonth()+1).padStart(2,'0');
+            out['처리월'] = pm || null;
+        }
+        if (map.center) out['이관처'] = row[map.center] || null;
+        out['건수'] = map.count ? (parseInt(row[map.count]) || 1) : 1;
+        return out;
+    });
+    
+    return {
+        meta: { period: periodId, generated: new Date().toISOString() },
+        rows: outputRows
+    };
+}
+
+// ====================================================================
+// Manifest 관리
+// ====================================================================
+function updateManifest(periodId, label, type, fileName) {
+    // 기존 period 찾기
+    let period = currentManifest.periods.find(p => p.id === periodId);
+    
+    if (!period) {
+        period = { id: periodId, label: label || periodId, generated: new Date().toISOString().split('T')[0], files: {} };
+        currentManifest.periods.push(period);
+    }
+    
+    period.files[type] = fileName;
+    period.label = label || period.label;
+    period.generated = new Date().toISOString().split('T')[0];
+    
+    currentManifest.periods.sort((a,b) => a.id.localeCompare(b.id));
+    convertedManifest = currentManifest;
+}
+
+// ====================================================================
+// Step 4: 결과 표시
+// ====================================================================
+function showResult(periodId) {
+    updateStep(3, 'done');
+    updateStep(4, 'active');
+    
+    const card = document.getElementById('step4Card');
+    card.classList.add('show');
+    
+    // 파일명
+    const fileName = `data/${periodId}-${selectedType}.json`;
+    document.getElementById('dataFileName').textContent = fileName;
+    
+    // 통계
+    const jsonStr = JSON.stringify(convertedData, null, 2);
+    const stats = document.getElementById('resultStats');
+    let statsHtml = `
+        <div class="result-stat"><div class="label">파일 크기</div><div class="value">${formatSize(jsonStr.length)}</div></div>
+    `;
+    
+    if (selectedType === 'reception') {
+        statsHtml += `
+            <div class="result-stat"><div class="label">총 행수</div><div class="value">${convertedData.meta.totalRows?.toLocaleString()}</div></div>
+            <div class="result-stat"><div class="label">필터 조합</div><div class="value">${Object.keys(convertedData.aggregated_data).length}</div></div>
+            <div class="result-stat"><div class="label">기간</div><div class="value">${convertedData.meta.lastMonth} ~ ${convertedData.meta.thisMonth}</div></div>
+        `;
+    } else if (selectedType === 'symptom') {
+        statsHtml += `
+            <div class="result-stat"><div class="label">총 레코드</div><div class="value">${convertedData.meta.totalRecords?.toLocaleString()}</div></div>
+            <div class="result-stat"><div class="label">제품 수</div><div class="value">${convertedData.products.length}</div></div>
+        `;
+    } else if (selectedType === 'processing') {
+        statsHtml += `
+            <div class="result-stat"><div class="label">총 행수</div><div class="value">${convertedData.rows.length.toLocaleString()}</div></div>
+        `;
+    }
+    
+    stats.innerHTML = statsHtml;
+    
+    // 미리보기
+    document.getElementById('jsonPreview').textContent = jsonStr.substring(0, 10000) + (jsonStr.length > 10000 ? '\n\n... (이하 생략)' : '');
+    
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showPreviewTab(type) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const preview = document.getElementById('jsonPreview');
+    if (type === 'data') {
+        const str = JSON.stringify(convertedData, null, 2);
+        preview.textContent = str.substring(0, 10000) + (str.length > 10000 ? '\n\n... (이하 생략)' : '');
+    } else {
+        preview.textContent = JSON.stringify(convertedManifest, null, 4);
+    }
+}
+
+// ====================================================================
+// 다운로드
+// ====================================================================
+function downloadDataJson() {
+    const periodId = document.getElementById('periodId').value.trim();
+    const fileName = `${periodId}-${selectedType}.json`;
+    downloadJson(convertedData, fileName);
+}
+
+function downloadManifest() {
+    downloadJson(convertedManifest, 'manifest.json');
+}
+
+function downloadJson(data, fileName) {
+    const str = JSON.stringify(data, null, 2);
+    const blob = new Blob([str], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// ====================================================================
+// 유틸리티
+// ====================================================================
+function updateStep(num, state) {
+    const el = document.getElementById(`step${num}Indicator`);
+    el.classList.remove('active', 'done');
+    if (state) el.classList.add(state);
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+function resetAll() {
+    selectedType = null;
+    workbook = null;
+    sheetData = [];
+    columns = [];
+    convertedData = null;
+    
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('step2Card').style.display = 'none';
+    document.getElementById('step3Card').classList.remove('show');
+    document.getElementById('step4Card').classList.remove('show');
+    document.getElementById('fileInfo').classList.remove('show');
+    document.getElementById('excelPreviewWrapper').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+    
+    updateStep(1, 'active');
+    updateStep(2, '');
+    updateStep(3, '');
+    updateStep(4, '');
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
