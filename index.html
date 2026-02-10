@@ -1548,8 +1548,11 @@
     // ====================================================================
     // 컨버터 데이터 브릿지 - data_service.js 자동 감지 및 변환
     // ====================================================================
-    if (typeof SERVICE_DATA !== 'undefined' && Array.isArray(SERVICE_DATA) && SERVICE_DATA.length > 0) {
-        (function() {
+    
+    // SERVICE_DATA 로딩 대기
+    function initWithServiceData() {
+        if (typeof SERVICE_DATA !== 'undefined' && Array.isArray(SERVICE_DATA) && SERVICE_DATA.length > 0) {
+            (function() {
             var _raw = SERVICE_DATA;
             console.log('[컨버터 브릿지] SERVICE_DATA 감지: ' + _raw.length.toLocaleString() + '건');
             
@@ -1710,6 +1713,28 @@
             
             console.log('[컨버터 브릿지] index.html 연동 준비 완료');
         })();
+    }
+    }
+    
+    // SERVICE_DATA 로딩 대기 및 초기화
+    if (window.DATA_SERVICE_LOADED) {
+        // 이미 로드됨
+        initWithServiceData();
+    } else {
+        // 로딩 대기
+        console.log('[초기화] SERVICE_DATA 로딩 대기 중...');
+        window.addEventListener('SERVICE_DATA_READY', function() {
+            console.log('[초기화] SERVICE_DATA 로딩 완료, 초기화 시작');
+            initWithServiceData();
+        });
+        
+        // 타임아웃 설정 (10초)
+        setTimeout(function() {
+            if (!window.DATA_SERVICE_LOADED) {
+                console.warn('[초기화] SERVICE_DATA 로딩 시간 초과, 외부 JSON 모드로 전환');
+                // 외부 JSON 모드로 진행
+            }
+        }, 10000);
     }
     
     // ====================================================================
